@@ -28,9 +28,12 @@ class EnvironmentVariables {
   @IsString()
   DATABASE_URL?: string;
 
+  @IsString()
+  JWT_SECRET!: string;
+
   @IsOptional()
   @IsString()
-  JWT_SECRET?: string;
+  JWT_EXPIRES_IN?: string;
 
   @IsOptional()
   @IsString()
