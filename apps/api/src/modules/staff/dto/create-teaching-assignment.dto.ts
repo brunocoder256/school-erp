@@ -30,6 +30,11 @@ export class CreateTeachingAssignmentDto {
   @IsUUID()
   streamId?: string;
 
+  @ApiPropertyOptional({ example: '5f6b6c1a-1b2c-4d5e-9f8a-7b6c5d4e3f2f' })
+  @IsOptional()
+  @IsUUID()
+  teachingGroupId?: string;
+
   @ApiPropertyOptional({ example: true, default: true })
   @IsOptional()
   @IsBoolean()

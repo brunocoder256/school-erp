@@ -17,6 +17,11 @@ export class UpdateTeachingAssignmentDto {
   @IsUUID()
   streamId?: string | null;
 
+  @ApiPropertyOptional({ example: '5f6b6c1a-1b2c-4d5e-9f8a-7b6c5d4e3f2f', nullable: true })
+  @IsOptional()
+  @IsUUID()
+  teachingGroupId?: string | null;
+
   @ApiPropertyOptional({ example: false })
   @IsOptional()
   @IsBoolean()

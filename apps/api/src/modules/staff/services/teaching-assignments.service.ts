@@ -19,6 +19,7 @@ const TEACHING_ASSIGNMENT_SELECT = {
   subjectId: true,
   academicClassId: true,
   streamId: true,
+  teachingGroupId: true,
   isActive: true,
   schoolId: true,
   createdAt: true,
@@ -61,6 +62,17 @@ export class TeachingAssignmentsService {
       dto.streamId ?? null,
     );
 
+    if (dto.teachingGroupId) {
+      await this.requireCompatibleGroup(
+        schoolId,
+        dto.teachingGroupId,
+        dto.academicYearId,
+        dto.subjectId,
+        dto.academicClassId,
+        dto.streamId ?? null,
+      );
+    }
+
     try {
       return await this.prisma.teachingAssignment.create({
         data: {
@@ -70,6 +82,7 @@ export class TeachingAssignmentsService {
           subjectId: dto.subjectId,
           academicClassId: dto.academicClassId,
           streamId: dto.streamId ?? null,
+          teachingGroupId: dto.teachingGroupId ?? null,
           isActive: dto.isActive ?? true,
         },
         select: TEACHING_ASSIGNMENT_SELECT,
@@ -134,6 +147,7 @@ export class TeachingAssignmentsService {
         subjectId: true,
         academicClassId: true,
         streamId: true,
+        teachingGroupId: true,
       },
     });
 
@@ -169,9 +183,24 @@ export class TeachingAssignmentsService {
       );
     }
 
+    if (dto.teachingGroupId !== undefined && dto.teachingGroupId !== null) {
+      const newStreamId =
+        dto.streamId !== undefined ? dto.streamId : existing.streamId;
+
+      await this.requireCompatibleGroup(
+        schoolId,
+        dto.teachingGroupId,
+        existing.academicYearId,
+        existing.subjectId,
+        academicClassId,
+        newStreamId,
+      );
+    }
+
     const data: {
       academicClassId?: string;
       streamId?: string | null;
+      teachingGroupId?: string | null;
       isActive?: boolean;
     } = {};
 
@@ -181,6 +210,10 @@ export class TeachingAssignmentsService {
 
     if (dto.streamId !== undefined) {
       data.streamId = dto.streamId;
+    }
+
+    if (dto.teachingGroupId !== undefined) {
+      data.teachingGroupId = dto.teachingGroupId;
     }
 
     if (dto.isActive !== undefined) {
@@ -237,6 +270,45 @@ export class TeachingAssignmentsService {
     if (existing) {
       throw new ConflictException(
         'This teaching assignment already exists for the school.',
+      );
+    }
+  }
+
+  /**
+   * Verifies the teaching group belongs to the active school and matches the
+   * academic context (year, class, stream, subject) of the assignment.
+   */
+  private async requireCompatibleGroup(
+    schoolId: string,
+    teachingGroupId: string,
+    academicYearId: string,
+    subjectId: string,
+    academicClassId: string,
+    streamId: string | null,
+  ): Promise<void> {
+    const group = await this.prisma.teachingGroup.findFirst({
+      where: { id: teachingGroupId, schoolId },
+      select: {
+        id: true,
+        academicYearId: true,
+        subjectId: true,
+        academicClassId: true,
+        streamId: true,
+      },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Teaching group not found.');
+    }
+
+    if (
+      group.academicYearId !== academicYearId ||
+      group.subjectId !== subjectId ||
+      group.academicClassId !== academicClassId ||
+      group.streamId !== streamId
+    ) {
+      throw new BadRequestException(
+        'The teaching group must match the assignment academic year, class, stream and subject.',
       );
     }
   }

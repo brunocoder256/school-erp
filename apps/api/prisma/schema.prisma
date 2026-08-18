@@ -102,6 +102,8 @@ model School {
   staffPositions           StaffPosition[]
   staffMembers             Staff[]
   teachingAssignments      TeachingAssignment[]
+  subjectAllocations       SubjectAllocation[]
+  teachingGroups           TeachingGroup[]
 }
 
 model AcademicYear {
@@ -123,6 +125,9 @@ model AcademicYear {
 
   responsibilities    StaffResponsibility[]
   teachingAssignments TeachingAssignment[]
+
+  subjectAllocations SubjectAllocation[]
+  teachingGroups     TeachingGroup[]
 
   @@unique([schoolId, name])
 }
@@ -276,6 +281,9 @@ model AcademicClass {
   responsibilities    StaffResponsibility[]
   teachingAssignments TeachingAssignment[]
 
+  subjectAllocations SubjectAllocation[]
+  teachingGroups     TeachingGroup[]
+
   @@unique([schoolId, code])
   @@index([schoolId])
   @@index([academicLevelId])
@@ -297,6 +305,9 @@ model Stream {
 
   responsibilities    StaffResponsibility[]
   teachingAssignments TeachingAssignment[]
+
+  subjectAllocations SubjectAllocation[]
+  teachingGroups     TeachingGroup[]
 
   @@unique([classId, code])
   @@index([classId])
@@ -329,6 +340,11 @@ model Enrollment {
 
   streamId String?
   stream   Stream? @relation(fields: [streamId], references: [id], onDelete: Restrict)
+
+  subjectCombinationId String?
+  subjectCombination   SubjectCombination? @relation(fields: [subjectCombinationId], references: [id], onDelete: SetNull)
+
+  subjectEnrollments StudentSubjectEnrollment[]
 
   @@unique([studentId, academicYearId])
   @@index([studentId])
@@ -503,8 +519,10 @@ model Subject {
   offerings    SubjectOffering[]
   combinations SubjectCombinationSubject[]
 
-  subjectCapabilities TeacherSubjectCapability[]
-  teachingAssignments TeachingAssignment[]
+  subjectCapabilities     TeacherSubjectCapability[]
+  teachingAssignments     TeachingAssignment[]
+  studentSubjectEnrollments StudentSubjectEnrollment[]
+  teachingGroups            TeachingGroup[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -529,6 +547,8 @@ model SubjectOffering {
   academicYearId String
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
 
+  allocations SubjectAllocation[]
+
   @@unique([schoolId, subjectId, academicLevelId, academicYearId])
   @@index([schoolId])
   @@index([academicLevelId])
@@ -552,7 +572,8 @@ model SubjectCombination {
   academicLevelId String
   academicLevel   AcademicLevel @relation(fields: [academicLevelId], references: [id], onDelete: Restrict)
 
-  subjects SubjectCombinationSubject[]
+  subjects   SubjectCombinationSubject[]
+  enrollments Enrollment[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -784,8 +805,106 @@ model TeachingAssignment {
   streamId String?
   stream   Stream? @relation(fields: [streamId], references: [id], onDelete: Restrict)
 
+  teachingGroupId String?
+  teachingGroup   TeachingGroup? @relation(fields: [teachingGroupId], references: [id], onDelete: SetNull)
+
+  @@unique([schoolId, staffId, academicYearId, subjectId, academicClassId, streamId])
   @@index([schoolId])
   @@index([staffId])
   @@index([academicYearId])
   @@index([academicClassId])
+  @@index([teachingGroupId])
+}
+
+/**
+ * Links a subject offering to an actual academic context (year + class +
+ * optional stream). The offering already pins the subject, level and year, so
+ * an allocation answers "this subject is taught in this class/stream this
+ * year". Duplicates are blocked at the database layer when a stream is set and
+ * by the application for class-level (null stream) rows.
+ */
+model SubjectAllocation {
+  id        String   @id @default(uuid())
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  academicClassId String
+  academicClass   AcademicClass @relation(fields: [academicClassId], references: [id], onDelete: Restrict)
+
+  streamId String?
+  stream   Stream? @relation(fields: [streamId], references: [id], onDelete: Restrict)
+
+  subjectOfferingId String
+  subjectOffering   SubjectOffering @relation(fields: [subjectOfferingId], references: [id], onDelete: Restrict)
+
+  @@unique([schoolId, academicYearId, academicClassId, streamId, subjectOfferingId])
+  @@index([schoolId])
+  @@index([academicYearId])
+  @@index([academicClassId])
+  @@index([subjectOfferingId])
+}
+
+/**
+ * A stable operational unit for teaching: subject X in year Y for class Z
+ * (optionally a specific stream). Teaching assignments aggregate into groups;
+ * the students of a group resolve from the enrollments of that year/class/
+ * stream context.
+ */
+model TeachingGroup {
+  id        String   @id @default(uuid())
+  name      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  academicClassId String
+  academicClass   AcademicClass @relation(fields: [academicClassId], references: [id], onDelete: Restrict)
+
+  streamId String?
+  stream   Stream? @relation(fields: [streamId], references: [id], onDelete: Restrict)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  teachingAssignments TeachingAssignment[]
+
+  @@unique([schoolId, academicYearId, academicClassId, streamId, subjectId])
+  @@index([schoolId])
+  @@index([academicYearId])
+  @@index([academicClassId])
+  @@index([subjectId])
+}
+
+/**
+ * A student's subject selection for a given academic enrollment. The tenant
+ * relationship is studentSubjectEnrollment → enrollment → student → school.
+ * Subject enrollments are historical: they are deactivated, never hard-deleted.
+ */
+model StudentSubjectEnrollment {
+  id        String   @id @default(uuid())
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@unique([enrollmentId, subjectId])
+  @@index([subjectId])
 }

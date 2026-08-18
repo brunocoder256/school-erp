@@ -7,6 +7,7 @@ import { validate } from './config/env.validation';
 import { PrismaModule } from './database/prisma.module';
 import { AcademicStructureModule } from './modules/academic-structure/academic-structure.module';
 import { AcademicYearsModule } from './modules/academic-years/academic-years.module';
+import { AcademicOperationsModule } from './modules/academic-operations/academic-operations.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { SchoolsModule } from './modules/schools/schools.module';
 import { StaffModule } from './modules/staff/staff.module';
@@ -30,6 +31,7 @@ import { UsersModule } from './modules/users/users.module';
     AcademicStructureModule,
     SubjectsModule,
     StaffModule,
+    AcademicOperationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

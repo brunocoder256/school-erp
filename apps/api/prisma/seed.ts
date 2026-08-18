@@ -1,5 +1,11 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
+import {
+  AdmissionType,
+  EnrollmentStatus,
+  Gender,
+  StudentStatus,
+} from "../generated/prisma/enums";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -88,6 +94,18 @@ const permissions = [
   { key: "teacher_assignments.create", description: "Create teaching assignments" },
   { key: "teacher_assignments.update", description: "Update teaching assignments" },
   { key: "teacher_assignments.delete", description: "Deactivate or remove teaching assignments" },
+
+  { key: "subject_allocations.read", description: "View subject allocations" },
+  { key: "subject_allocations.create", description: "Create subject allocations" },
+  { key: "subject_allocations.update", description: "Update or deactivate subject allocations" },
+
+  { key: "teaching_groups.read", description: "View teaching groups" },
+  { key: "teaching_groups.create", description: "Create teaching groups" },
+  { key: "teaching_groups.update", description: "Update or deactivate teaching groups" },
+
+  { key: "student_subjects.read", description: "View student subject enrollments" },
+  { key: "student_subjects.create", description: "Enroll students in subjects" },
+  { key: "student_subjects.update", description: "Update or deactivate student subject enrollments" },
 ];
 
 const roles = [
@@ -183,6 +201,15 @@ const rolePermissions: Record<string, string[]> = {
     "teacher_assignments.create",
     "teacher_assignments.update",
     "teacher_assignments.delete",
+    "subject_allocations.read",
+    "subject_allocations.create",
+    "subject_allocations.update",
+    "teaching_groups.read",
+    "teaching_groups.create",
+    "teaching_groups.update",
+    "student_subjects.read",
+    "student_subjects.create",
+    "student_subjects.update",
   ],
 
   TEACHER: [
@@ -201,6 +228,9 @@ const rolePermissions: Record<string, string[]> = {
     "subject_offerings.read",
     "combinations.read",
     "teacher_assignments.read",
+    "subject_allocations.read",
+    "teaching_groups.read",
+    "student_subjects.read",
   ],
 
   STUDENT: [
@@ -213,6 +243,9 @@ const rolePermissions: Record<string, string[]> = {
     "subjects.read",
     "subject_offerings.read",
     "combinations.read",
+    "subject_allocations.read",
+    "teaching_groups.read",
+    "student_subjects.read",
   ],
 
   PARENT: [
@@ -225,6 +258,9 @@ const rolePermissions: Record<string, string[]> = {
     "subjects.read",
     "subject_offerings.read",
     "combinations.read",
+    "subject_allocations.read",
+    "teaching_groups.read",
+    "student_subjects.read",
   ],
 
   STAFF: [
@@ -239,6 +275,9 @@ const rolePermissions: Record<string, string[]> = {
     "subjects.read",
     "subject_offerings.read",
     "combinations.read",
+    "subject_allocations.read",
+    "teaching_groups.read",
+    "student_subjects.read",
   ],
 };
 
@@ -486,8 +525,10 @@ async function main() {
     { classCode: "P5", code: "P5W", name: "P5 West" },
   ];
 
+  const streams: Record<string, { id: string }> = {};
+
   for (const stream of streamSeeds) {
-    await prisma.stream.upsert({
+    const record = await prisma.stream.upsert({
       where: {
         classId_code: { classId: classes[stream.classCode].id, code: stream.code },
       },
@@ -498,6 +539,7 @@ async function main() {
         name: stream.name,
       },
     });
+    streams[stream.code] = record;
   }
 
   const categories: Record<string, { id: string }> = {};
@@ -580,8 +622,10 @@ async function main() {
     ["S6", "PHY"], ["S6", "CHEM"], ["S6", "BIO"], ["S6", "MATH"], ["S6", "ECO"], ["S6", "GEO"], ["S6", "HIS"], ["S6", "ENT"], ["S6", "LIT"],
   ];
 
+  const offerings: Record<string, { id: string }> = {};
+
   for (const [levelCode, subjectCode] of offeringSeeds) {
-    await prisma.subjectOffering.upsert({
+    const record = await prisma.subjectOffering.upsert({
       where: {
         schoolId_subjectId_academicLevelId_academicYearId: {
           schoolId: school.id,
@@ -599,6 +643,7 @@ async function main() {
         isActive: true,
       },
     });
+    offerings[`${levelCode}:${subjectCode}`] = record;
   }
 
   const combinationSeeds = [
@@ -607,6 +652,8 @@ async function main() {
     { code: "HEG", name: "History, Economics and Geography", level: "S5", description: "Arts combination: History, Economics and Geography", minSubjects: 3, maxSubjects: 3, subjects: ["HIS", "ECO", "GEO"] },
     { code: "MEG", name: "Mathematics, Economics and Geography", level: "S5", description: "Arts combination: Mathematics, Economics and Geography", minSubjects: 3, maxSubjects: 3, subjects: ["MATH", "ECO", "GEO"] },
   ];
+
+  const combinations: Record<string, { id: string }> = {};
 
   for (const combination of combinationSeeds) {
     const record = await prisma.subjectCombination.upsert({
@@ -629,6 +676,8 @@ async function main() {
       },
     });
 
+    combinations[combination.code] = record;
+
     for (const [index, subjectCode] of combination.subjects.entries()) {
       await prisma.subjectCombinationSubject.upsert({
         where: {
@@ -647,6 +696,162 @@ async function main() {
       });
     }
   }
+
+  console.log("Seeding demonstration school academic operations...");
+
+  const allocationSeeds: Array<[string, string | null, string]> = [
+    ["S2", "S2E", "MATH"], ["S2", "S2E", "ENG"], ["S2", "S2E", "SCI"], ["S2", "S2E", "SST"],
+    ["S2", "S2W", "MATH"], ["S2", "S2W", "ENG"], ["S2", "S2W", "SCI"], ["S2", "S2W", "SST"],
+    ["S5", null, "MATH"], ["S5", null, "PHY"], ["S5", null, "CHEM"], ["S5", null, "BIO"],
+    ["S5", null, "ECO"], ["S5", null, "GEO"], ["S5", null, "HIS"], ["S5", null, "ENT"], ["S5", null, "LIT"],
+  ];
+
+  for (const [levelCode, streamCode, subjectCode] of allocationSeeds) {
+    const classId = classes[levelCode].id;
+    const streamId = streamCode ? streams[streamCode].id : null;
+    const subjectOfferingId = offerings[`${levelCode}:${subjectCode}`].id;
+
+    const existingAllocation = await prisma.subjectAllocation.findFirst({
+      where: {
+        schoolId: school.id,
+        academicYearId: academicYear.id,
+        academicClassId: classId,
+        streamId,
+        subjectOfferingId,
+      },
+      select: { id: true },
+    });
+
+    if (existingAllocation) {
+      await prisma.subjectAllocation.update({
+        where: { id: existingAllocation.id },
+        data: { isActive: true },
+      });
+    } else {
+      await prisma.subjectAllocation.create({
+        data: {
+          schoolId: school.id,
+          academicYearId: academicYear.id,
+          academicClassId: classId,
+          streamId,
+          subjectOfferingId,
+          isActive: true,
+        },
+      });
+    }
+  }
+
+  const teachingGroupSeeds: Array<[string, string | null, string, string]> = [
+    ["S2", "S2E", "MATH", "S2 East Mathematics"],
+    ["S2", "S2W", "MATH", "S2 West Mathematics"],
+    ["S5", null, "MATH", "S5 Mathematics"],
+    ["S5", null, "PHY", "S5 Physics"],
+    ["S5", null, "CHEM", "S5 Chemistry"],
+  ];
+
+  for (const [levelCode, streamCode, subjectCode, name] of teachingGroupSeeds) {
+    const classId = classes[levelCode].id;
+    const streamId = streamCode ? streams[streamCode].id : null;
+
+    const existingGroup = await prisma.teachingGroup.findFirst({
+      where: {
+        schoolId: school.id,
+        academicYearId: academicYear.id,
+        academicClassId: classId,
+        streamId,
+        subjectId: subjects[subjectCode].id,
+      },
+      select: { id: true },
+    });
+
+    if (existingGroup) {
+      await prisma.teachingGroup.update({
+        where: { id: existingGroup.id },
+        data: { name, isActive: true },
+      });
+    } else {
+      await prisma.teachingGroup.create({
+        data: {
+          schoolId: school.id,
+          academicYearId: academicYear.id,
+          academicClassId: classId,
+          streamId,
+          subjectId: subjects[subjectCode].id,
+          name,
+          isActive: true,
+        },
+      });
+    }
+  }
+
+  const demoStudent = await prisma.student.upsert({
+    where: {
+      schoolId_admissionNumber: {
+        schoolId: school.id,
+        admissionNumber: "STU-2026-0001",
+      },
+    },
+    update: {
+      firstName: "Grace",
+      lastName: "Akello",
+      gender: Gender.FEMALE,
+      dateOfBirth: new Date("2008-05-14"),
+      status: StudentStatus.ACTIVE,
+    },
+    create: {
+      schoolId: school.id,
+      admissionNumber: "STU-2026-0001",
+      firstName: "Grace",
+      lastName: "Akello",
+      gender: Gender.FEMALE,
+      dateOfBirth: new Date("2008-05-14"),
+      status: StudentStatus.ACTIVE,
+    },
+  });
+
+  const demoEnrollment = await prisma.enrollment.upsert({
+    where: {
+      studentId_academicYearId: {
+        studentId: demoStudent.id,
+        academicYearId: academicYear.id,
+      },
+    },
+    update: {
+      academicClassId: classes["S5"].id,
+      streamId: null,
+      status: EnrollmentStatus.ACTIVE,
+      subjectCombinationId: combinations["PCM"].id,
+    },
+    create: {
+      studentId: demoStudent.id,
+      academicYearId: academicYear.id,
+      academicClassId: classes["S5"].id,
+      streamId: null,
+      status: EnrollmentStatus.ACTIVE,
+      enrollmentDate: new Date("2026-01-15"),
+      admissionType: AdmissionType.NEW,
+      subjectCombinationId: combinations["PCM"].id,
+    },
+  });
+
+  for (const subjectCode of ["PHY", "CHEM", "MATH"]) {
+    await prisma.studentSubjectEnrollment.upsert({
+      where: {
+        enrollmentId_subjectId: {
+          enrollmentId: demoEnrollment.id,
+          subjectId: subjects[subjectCode].id,
+        },
+      },
+      update: { isActive: true },
+      create: {
+        enrollmentId: demoEnrollment.id,
+        subjectId: subjects[subjectCode].id,
+        isActive: true,
+      },
+    });
+  }
+
+  console.log("Seeded demonstration school academic operations.");
 
   console.log("Seeding demonstration school staff configuration...");
 

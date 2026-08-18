@@ -626,9 +626,17 @@ Teacher qualifications and subject capabilities
 Staff responsibilities (class teacher, head of department, ...)
 Teaching assignments (staff + year + subject + class + optional stream)
 Tenant-scoped seed data for staff configuration dictionaries
-Milestone 10 — Academic Operations
+Milestone 10 — Academic Operations & Teaching/Learning Foundation
 
-Planned:
+Implemented:
+
+Subject allocations (subject offering to class/stream for a year, no hard delete)
+Teaching groups (stable unit per year/class/stream/subject, student resolution)
+Student subject enrollment (subject selection per enrollment, deactivate-only)
+Subject combination assignment to enrollments with bulk subject enrollment
+Tenant-scoped seed data for allocations, teaching groups and a demo student
+
+Planned (separate milestones):
 
 Attendance
 Exams
@@ -683,10 +691,12 @@ Implemented milestones: Backend foundation, Infrastructure, Database,
 Identity and Access, School domain (academic years, terms, students,
 enrollment), the Academic Structure & Uganda Education Model foundation
 (configurable sections, levels, progression, classes, streams, subject
-catalog, offerings, combinations), and the Staff & Teacher Management
+catalog, offerings, combinations), the Staff & Teacher Management
 Foundation (staff profiles, categories, departments, positions, teacher
 profiles, qualifications, subject capabilities, responsibilities, teaching
-assignments).
+assignments), and the Academic Operations & Teaching/Learning Foundation
+(subject allocations, teaching groups, student subject enrollment, subject
+combination assignment).
 
-Planned milestones: Academic operations (attendance, exams, marks, report
-cards, timetables), Finance, PWA and offline capabilities.
+Planned milestones: Attendance, Assessment (exams, marks, report cards),
+Timetables, Finance, PWA and offline capabilities.

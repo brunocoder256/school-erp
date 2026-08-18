@@ -18,6 +18,7 @@ describe('TeachingAssignmentsService', () => {
     subject: { findFirst: jest.Mock };
     academicClass: { findFirst: jest.Mock };
     stream: { findFirst: jest.Mock };
+    teachingGroup: { findFirst: jest.Mock };
     teachingAssignment: {
       create: jest.Mock;
       findMany: jest.Mock;
@@ -56,6 +57,7 @@ describe('TeachingAssignmentsService', () => {
       subject: { findFirst: jest.fn() },
       academicClass: { findFirst: jest.fn() },
       stream: { findFirst: jest.fn() },
+      teachingGroup: { findFirst: jest.fn() },
       teachingAssignment: {
         create: jest.fn(),
         findMany: jest.fn(),
@@ -205,6 +207,7 @@ describe('TeachingAssignmentsService', () => {
           subjectId: 'subject-a',
           academicClassId: 'class-a',
           streamId: null,
+          teachingGroupId: null,
           isActive: true,
         },
         select: expect.any(Object),
@@ -220,6 +223,76 @@ describe('TeachingAssignmentsService', () => {
       await expect(service.create(schoolA, createDto)).rejects.toBeInstanceOf(
         ConflictException,
       );
+    });
+
+    it('reports a teaching group of another school as not found', async () => {
+      mockParents();
+      prisma.teachingAssignment.findFirst.mockResolvedValue(null);
+      prisma.teachingGroup.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.create(schoolA, {
+          ...createDto,
+          teachingGroupId: 'group-b',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.teachingAssignment.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a teaching group that does not match the assignment context', async () => {
+      mockParents();
+      prisma.teachingAssignment.findFirst.mockResolvedValue(null);
+      prisma.teachingGroup.findFirst.mockResolvedValue({
+        id: 'group-a',
+        academicYearId: 'year-b',
+        subjectId: 'subject-a',
+        academicClassId: 'class-a',
+        streamId: null,
+      });
+
+      await expect(
+        service.create(schoolA, {
+          ...createDto,
+          teachingGroupId: 'group-a',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.teachingAssignment.create).not.toHaveBeenCalled();
+    });
+
+    it('creates an assignment linked to a compatible teaching group', async () => {
+      mockParents();
+      prisma.teachingAssignment.findFirst.mockResolvedValue(null);
+      prisma.teachingGroup.findFirst.mockResolvedValue({
+        id: 'group-a',
+        academicYearId: 'year-a',
+        subjectId: 'subject-a',
+        academicClassId: 'class-a',
+        streamId: null,
+      });
+      prisma.teachingAssignment.create.mockResolvedValue({
+        ...assignmentA,
+        teachingGroupId: 'group-a',
+      });
+
+      const result = await service.create(schoolA, {
+        ...createDto,
+        teachingGroupId: 'group-a',
+      });
+
+      expect(prisma.teachingAssignment.create).toHaveBeenCalledWith({
+        data: {
+          schoolId: schoolA,
+          staffId: 'staff-a',
+          academicYearId: 'year-a',
+          subjectId: 'subject-a',
+          academicClassId: 'class-a',
+          streamId: null,
+          teachingGroupId: 'group-a',
+          isActive: true,
+        },
+        select: expect.any(Object),
+      });
+      expect(result.teachingGroupId).toBe('group-a');
     });
   });
 
@@ -392,6 +465,54 @@ describe('TeachingAssignmentsService', () => {
       expect(prisma.teachingAssignment.update).toHaveBeenCalledWith({
         where: { id: assignmentA.id },
         data: { streamId: null },
+        select: expect.any(Object),
+      });
+    });
+
+    it('rejects a teaching group that does not match the updated context', async () => {
+      prisma.teachingAssignment.findFirst.mockResolvedValueOnce({
+        id: assignmentA.id,
+        staffId: 'staff-a',
+        academicYearId: 'year-a',
+        subjectId: 'subject-a',
+        academicClassId: 'class-a',
+        streamId: null,
+        teachingGroupId: null,
+      });
+      prisma.teachingGroup.findFirst.mockResolvedValue({
+        id: 'group-a',
+        academicYearId: 'year-a',
+        subjectId: 'subject-a',
+        academicClassId: 'class-a',
+        streamId: 'stream-a',
+      });
+
+      await expect(
+        service.update(schoolA, assignmentA.id, { teachingGroupId: 'group-a' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.teachingAssignment.update).not.toHaveBeenCalled();
+    });
+
+    it('clears the teaching group when an explicit null is supplied', async () => {
+      prisma.teachingAssignment.findFirst.mockResolvedValueOnce({
+        id: assignmentA.id,
+        staffId: 'staff-a',
+        academicYearId: 'year-a',
+        subjectId: 'subject-a',
+        academicClassId: 'class-a',
+        streamId: null,
+        teachingGroupId: 'group-a',
+      });
+      prisma.teachingAssignment.update.mockResolvedValue({
+        ...assignmentA,
+        teachingGroupId: null,
+      });
+
+      await service.update(schoolA, assignmentA.id, { teachingGroupId: null });
+
+      expect(prisma.teachingAssignment.update).toHaveBeenCalledWith({
+        where: { id: assignmentA.id },
+        data: { teachingGroupId: null },
         select: expect.any(Object),
       });
     });
