@@ -183,7 +183,10 @@ export class AcademicYearsService {
 
     const academicYear = await this.prisma.academicYear.findFirst({
       where: { id, schoolId },
-      select: { id: true, _count: { select: { terms: true } } },
+      select: {
+        id: true,
+        _count: { select: { terms: true, enrollments: true } },
+      },
     });
 
     if (!academicYear) {
@@ -196,6 +199,12 @@ export class AcademicYearsService {
       );
     }
 
+    if (academicYear._count.enrollments > 0) {
+      throw new ConflictException(
+        'Cannot delete an academic year that still has enrollments.',
+      );
+    }
+
     try {
       await this.prisma.academicYear.delete({ where: { id } });
     } catch (error) {
@@ -204,6 +213,15 @@ export class AcademicYearsService {
         error.code === 'P2025'
       ) {
         throw new NotFoundException('Academic year not found.');
+      }
+
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      ) {
+        throw new ConflictException(
+          'Cannot delete an academic year that still has enrollments.',
+        );
       }
 
       throw error;

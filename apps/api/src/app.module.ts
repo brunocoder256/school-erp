@@ -8,6 +8,7 @@ import { PrismaModule } from './database/prisma.module';
 import { AcademicYearsModule } from './modules/academic-years/academic-years.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { SchoolsModule } from './modules/schools/schools.module';
+import { StudentsModule } from './modules/students/students.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { UsersModule } from './modules/users/users.module';
     SchoolsModule,
     UsersModule,
     AcademicYearsModule,
+    StudentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

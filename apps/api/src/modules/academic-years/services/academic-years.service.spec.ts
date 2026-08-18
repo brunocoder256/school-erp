@@ -351,7 +351,7 @@ describe('AcademicYearsService', () => {
     it('refuses to delete an academic year that still has terms', async () => {
       prisma.academicYear.findFirst.mockResolvedValue({
         id: academicYearA.id,
-        _count: { terms: 3 },
+        _count: { terms: 3, enrollments: 0 },
       });
 
       await expect(
@@ -360,10 +360,22 @@ describe('AcademicYearsService', () => {
       expect(prisma.academicYear.delete).not.toHaveBeenCalled();
     });
 
-    it('deletes an academic year with no terms', async () => {
+    it('refuses to delete an academic year that still has enrollments', async () => {
       prisma.academicYear.findFirst.mockResolvedValue({
         id: academicYearA.id,
-        _count: { terms: 0 },
+        _count: { terms: 0, enrollments: 2 },
+      });
+
+      await expect(
+        service.delete(schoolA, academicYearA.id),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.academicYear.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes an academic year with no terms and no enrollments', async () => {
+      prisma.academicYear.findFirst.mockResolvedValue({
+        id: academicYearA.id,
+        _count: { terms: 0, enrollments: 0 },
       });
       prisma.academicYear.delete.mockResolvedValue(academicYearA);
 
@@ -377,7 +389,7 @@ describe('AcademicYearsService', () => {
     it('maps a P2025 to not found', async () => {
       prisma.academicYear.findFirst.mockResolvedValue({
         id: academicYearA.id,
-        _count: { terms: 0 },
+        _count: { terms: 0, enrollments: 0 },
       });
       prisma.academicYear.delete.mockRejectedValue(prismaError('P2025'));
 

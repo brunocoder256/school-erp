@@ -24,6 +24,50 @@ enum MembershipStatus {
   INACTIVE
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  WITHDRAWN
+  TRANSFERRED
+  COMPLETED
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  TRANSFERRED
+  WITHDRAWN
+  COMPLETED
+  PROMOTED
+  REPEATING
+}
+
+enum AdmissionType {
+  NEW
+  TRANSFER
+  RETURNING
+  RE_ENTRY
+}
+
+enum BoardingStatus {
+  DAY
+  BOARDING
+}
+
+enum GuardianRelationshipType {
+  FATHER
+  MOTHER
+  GUARDIAN
+  SPONSOR
+  OTHER
+}
+
 model School {
   id          String   @id @default(uuid())
   name        String
@@ -32,9 +76,12 @@ model School {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  academicYears AcademicYear[]
-  memberships   SchoolMembership[]
-  userRoles     UserRole[]
+  academicYears   AcademicYear[]
+  memberships     SchoolMembership[]
+  userRoles       UserRole[]
+  students        Student[]
+  academicClasses AcademicClass[]
+  guardians       Guardian[]
 }
 
 model AcademicYear {
@@ -49,7 +96,8 @@ model AcademicYear {
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  terms Term[]
+  terms       Term[]
+  enrollments Enrollment[]
 
   @@unique([schoolId, name])
 }
@@ -144,4 +192,148 @@ model UserRole {
   @@unique([userId, roleId, schoolId])
   @@index([schoolId])
   @@index([roleId])
+}
+
+model Student {
+  id                    String        @id @default(uuid())
+  admissionNumber       String
+  firstName             String
+  middleName            String?
+  lastName              String
+  preferredName         String?
+  gender                Gender
+  dateOfBirth           DateTime
+  placeOfBirth          String?
+  nationality           String?
+  religion              String?
+  profilePhotoUrl       String?
+  nationalId            String?
+  birthCertificateNumber String?
+  phone                 String?
+  email                 String?
+  address               String?
+  district              String?
+  municipality          String?
+  village               String?
+  status                StudentStatus @default(ACTIVE)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  enrollments      Enrollment[]
+  studentGuardians StudentGuardian[]
+
+  @@unique([schoolId, admissionNumber])
+  @@index([schoolId])
+}
+
+model AcademicClass {
+  id          String   @id @default(uuid())
+  name        String
+  code        String
+  level       Int
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  streams     Stream[]
+  enrollments Enrollment[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model Stream {
+  id        String   @id @default(uuid())
+  name      String
+  code      String
+  capacity  Int?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  classId String
+  class   AcademicClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  enrollments Enrollment[]
+
+  @@unique([classId, code])
+  @@index([classId])
+}
+
+model Enrollment {
+  id                String            @id @default(uuid())
+  status            EnrollmentStatus  @default(PENDING)
+  enrollmentDate    DateTime
+  admissionType     AdmissionType     @default(NEW)
+  previousSchool    String?
+  previousClass     String?
+  boardingStatus    BoardingStatus?
+  house             String?
+  remarks           String?
+  withdrawalDate    DateTime?
+  withdrawalReason  String?
+  completedDate     DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  studentId       String
+  student         Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  academicYearId  String
+  academicYear    AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  academicClassId String
+  academicClass   AcademicClass  @relation(fields: [academicClassId], references: [id], onDelete: Restrict)
+
+  streamId String?
+  stream   Stream? @relation(fields: [streamId], references: [id], onDelete: Restrict)
+
+  @@unique([studentId, academicYearId])
+  @@index([studentId])
+  @@index([academicYearId])
+}
+
+model Guardian {
+  id                    String   @id @default(uuid())
+  fullName              String
+  phone                 String?
+  alternatePhone        String?
+  email                 String?
+  address               String?
+  occupation            String?
+  preferredContactMethod String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  studentGuardians StudentGuardian[]
+
+  @@index([schoolId])
+}
+
+model StudentGuardian {
+  id                  String                     @id @default(uuid())
+  relationshipType    GuardianRelationshipType
+  isPrimary           Boolean                    @default(false)
+  isEmergencyContact  Boolean                    @default(false)
+  isAuthorizedPickup  Boolean                    @default(false)
+  createdAt           DateTime                   @default(now())
+
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  guardianId String
+  guardian   Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, guardianId])
+  @@index([guardianId])
 }
