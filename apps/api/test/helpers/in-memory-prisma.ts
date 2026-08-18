@@ -212,11 +212,80 @@ function matchesWhere(where: RecordData | undefined, record: RecordData) {
   }
 
   for (const [key, value] of Object.entries(where)) {
-    if (value && typeof value === 'object' && 'in' in value) {
-      if (!Array.isArray(value.in) || !value.in.includes(record[key])) {
+    if (key === 'OR') {
+      if (
+        !(
+          Array.isArray(value) &&
+          value.some((clause) => matchesWhere(clause, record))
+        )
+      ) {
         return false;
       }
-    } else if (record[key] !== value) {
+
+      continue;
+    }
+
+    if (key === 'AND') {
+      if (
+        !(
+          Array.isArray(value) &&
+          value.every((clause) => matchesWhere(clause, record))
+        )
+      ) {
+        return false;
+      }
+
+      continue;
+    }
+
+    if (key === 'NOT') {
+      if (matchesWhere(value, record)) {
+        return false;
+      }
+
+      continue;
+    }
+
+    if (value && typeof value === 'object') {
+      if ('in' in value) {
+        if (!Array.isArray(value.in) || !value.in.includes(record[key])) {
+          return false;
+        }
+
+        continue;
+      }
+
+      if ('not' in value) {
+        const excluded = value.not;
+        const matches =
+          excluded === null ? record[key] === null : record[key] === excluded;
+
+        if (matches) {
+          return false;
+        }
+
+        continue;
+      }
+
+      if ('contains' in value) {
+        const needle = String(value.contains).toLowerCase();
+
+        if (!String(record[key] ?? '').toLowerCase().includes(needle)) {
+          return false;
+        }
+
+        continue;
+      }
+
+      // Unsupported operators (e.g. nested relation filters) fail closed.
+      if ('mode' in value || 'some' in value || 'none' in value) {
+        continue;
+      }
+
+      return false;
+    }
+
+    if (record[key] !== value) {
       return false;
     }
   }
@@ -347,6 +416,56 @@ export function createInMemoryStore(
 
         return { count: args.data.length };
       }),
+      upsert: jest.fn(
+        async (args: {
+          where: RecordData;
+          create: RecordData;
+          update: RecordData;
+          select?: Select;
+        }) => {
+          const collections = data;
+          const key = Object.keys(args.where)[0];
+          const value = args.where[key];
+          const index = collections[model].findIndex(
+            (item) => item[key] === value,
+          );
+
+          if (index === -1) {
+            const record: RecordData = {
+              id: randomUUID(),
+              ...args.create,
+              createdAt: new Date('2026-01-01'),
+              updatedAt: new Date('2026-01-01'),
+            };
+
+            for (const [key, value] of Object.entries(args.create)) {
+              if (
+                value &&
+                typeof value === 'object' &&
+                'connect' in value &&
+                (value as { connect?: { id?: unknown } }).connect?.id
+              ) {
+                record[`${key}Id`] = (
+                  value as { connect: { id: unknown } }
+                ).connect.id;
+              }
+            }
+
+            collections[model].push(record);
+
+            return pickWithCount(model, args.select, record);
+          }
+
+          const record = collections[model][index];
+          Object.assign(record, {
+            ...record,
+            ...args.update,
+            updatedAt: record.updatedAt,
+          });
+
+          return pickWithCount(model, args.select, record);
+        },
+      ),
     };
   }
 

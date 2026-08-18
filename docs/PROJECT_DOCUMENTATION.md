@@ -614,7 +614,19 @@ Configurable academic levels and progression
 Academic classes and streams
 Subject catalog, categories, offerings and combinations
 Tenant-scoped seed data for a representative Ugandan school
-Milestone 9 — Academic Operations
+Milestone 9 — Staff & Teacher Management Foundation
+
+Implemented:
+
+Staff profile records (unique staff number per school, no hard delete)
+Staff lifecycle via employment status
+Configurable staff categories, departments and positions
+Teacher profiles (specialization of staff)
+Teacher qualifications and subject capabilities
+Staff responsibilities (class teacher, head of department, ...)
+Teaching assignments (staff + year + subject + class + optional stream)
+Tenant-scoped seed data for staff configuration dictionaries
+Milestone 10 — Academic Operations
 
 Planned:
 
@@ -623,7 +635,7 @@ Exams
 Marks
 Report cards
 Timetables
-Milestone 10 — Finance
+Milestone 11 — Finance
 
 Planned:
 
@@ -632,7 +644,7 @@ Invoices
 Payments
 Balances
 Financial reporting
-Milestone 11 — PWA and Offline Capabilities
+Milestone 12 — PWA and Offline Capabilities
 
 Planned:
 
@@ -669,9 +681,12 @@ Production: 🔴 Not yet deployed
 
 Implemented milestones: Backend foundation, Infrastructure, Database,
 Identity and Access, School domain (academic years, terms, students,
-enrollment), and the Academic Structure & Uganda Education Model foundation
+enrollment), the Academic Structure & Uganda Education Model foundation
 (configurable sections, levels, progression, classes, streams, subject
-catalog, offerings, combinations).
+catalog, offerings, combinations), and the Staff & Teacher Management
+Foundation (staff profiles, categories, departments, positions, teacher
+profiles, qualifications, subject capabilities, responsibilities, teaching
+assignments).
 
 Planned milestones: Academic operations (attendance, exams, marks, report
 cards, timetables), Finance, PWA and offline capabilities.

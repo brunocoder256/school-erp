@@ -55,6 +55,13 @@ enum AdmissionType {
   RE_ENTRY
 }
 
+enum StaffStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  LEFT
+}
+
 enum BoardingStatus {
   DAY
   BOARDING
@@ -90,6 +97,11 @@ model School {
   subjects                 Subject[]
   subjectOfferings         SubjectOffering[]
   subjectCombinations      SubjectCombination[]
+  staffCategories          StaffCategory[]
+  departments              Department[]
+  staffPositions           StaffPosition[]
+  staffMembers             Staff[]
+  teachingAssignments      TeachingAssignment[]
 }
 
 model AcademicYear {
@@ -108,6 +120,9 @@ model AcademicYear {
   enrollments Enrollment[]
 
   subjectOfferings SubjectOffering[]
+
+  responsibilities    StaffResponsibility[]
+  teachingAssignments TeachingAssignment[]
 
   @@unique([schoolId, name])
 }
@@ -138,6 +153,7 @@ model User {
 
   memberships SchoolMembership[]
   userRoles   UserRole[]
+  staffMembers Staff[]
 }
 
 model SchoolMembership {
@@ -257,6 +273,9 @@ model AcademicClass {
   streams     Stream[]
   enrollments Enrollment[]
 
+  responsibilities    StaffResponsibility[]
+  teachingAssignments TeachingAssignment[]
+
   @@unique([schoolId, code])
   @@index([schoolId])
   @@index([academicLevelId])
@@ -275,6 +294,9 @@ model Stream {
   class   AcademicClass @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   enrollments Enrollment[]
+
+  responsibilities    StaffResponsibility[]
+  teachingAssignments TeachingAssignment[]
 
   @@unique([classId, code])
   @@index([classId])
@@ -481,6 +503,9 @@ model Subject {
   offerings    SubjectOffering[]
   combinations SubjectCombinationSubject[]
 
+  subjectCapabilities TeacherSubjectCapability[]
+  teachingAssignments TeachingAssignment[]
+
   @@unique([schoolId, code])
   @@index([schoolId])
   @@index([categoryId])
@@ -548,4 +573,219 @@ model SubjectCombinationSubject {
 
   @@unique([combinationId, subjectId])
   @@index([subjectId])
+}
+
+model StaffCategory {
+  id          String   @id @default(uuid())
+  name        String
+  code        String
+  description String?
+  displayOrder Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  staffMembers Staff[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String
+  code        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  staffMembers      Staff[]
+  responsibilities StaffResponsibility[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model StaffPosition {
+  id          String   @id @default(uuid())
+  name        String
+  code        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  staffMembers Staff[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model Staff {
+  id               String       @id @default(uuid())
+  staffNumber      String
+  firstName        String
+  middleName       String?
+  lastName         String
+  preferredName    String?
+  email            String?
+  phone            String?
+  alternativePhone String?
+  dateOfBirth      DateTime?
+  gender           Gender?
+  nationalId       String?
+  address          String?
+  employmentStatus StaffStatus   @default(ACTIVE)
+  employmentType   String?
+  joiningDate      DateTime?
+  leavingDate      DateTime?
+  notes            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  staffCategoryId String?
+  staffCategory   StaffCategory? @relation(fields: [staffCategoryId], references: [id], onDelete: SetNull)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  positionId String?
+  position   StaffPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+
+  userId String?
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  teacherProfile     TeacherProfile?
+  qualifications     StaffQualification[]
+  subjectCapabilities TeacherSubjectCapability[]
+  responsibilities  StaffResponsibility[]
+  teachingAssignments TeachingAssignment[]
+
+  @@unique([schoolId, staffNumber])
+  @@index([schoolId])
+  @@index([schoolId, employmentStatus])
+  @@index([departmentId])
+}
+
+model TeacherProfile {
+  id                            String   @id @default(uuid())
+  specialization                String?
+  yearsOfExperience             Int?
+  professionalQualification     String?
+  registrationNumber            String?
+  registrationBody              String?
+  registrationDate              DateTime?
+  registrationExpiryDate        DateTime?
+  registrationStatus            String?
+  highestAcademicQualification  String?
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  staffId String @unique
+  staff   Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+}
+
+model StaffQualification {
+  id                String   @id @default(uuid())
+  name              String
+  institution       String?
+  qualificationType String?
+  fieldOfStudy      String?
+  awardDate         DateTime?
+  grade             String?
+  certificateNumber String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  staffId String
+  staff   Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+}
+
+model TeacherSubjectCapability {
+  id        String   @id @default(uuid())
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  staffId String
+  staff   Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@unique([staffId, subjectId])
+  @@index([staffId])
+  @@index([subjectId])
+}
+
+model StaffResponsibility {
+  id        String   @id @default(uuid())
+  type      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  staffId String
+  staff   Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  classId String?
+  class   AcademicClass? @relation(fields: [classId], references: [id], onDelete: Restrict)
+
+  streamId String?
+  stream   Stream? @relation(fields: [streamId], references: [id], onDelete: Restrict)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+
+  @@index([staffId])
+  @@index([academicYearId])
+}
+
+model TeachingAssignment {
+  id        String   @id @default(uuid())
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  staffId String
+  staff   Staff @relation(fields: [staffId], references: [id], onDelete: Restrict)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  academicClassId String
+  academicClass   AcademicClass @relation(fields: [academicClassId], references: [id], onDelete: Restrict)
+
+  streamId String?
+  stream   Stream? @relation(fields: [streamId], references: [id], onDelete: Restrict)
+
+  @@index([schoolId])
+  @@index([staffId])
+  @@index([academicYearId])
+  @@index([academicClassId])
 }

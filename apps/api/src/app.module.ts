@@ -9,6 +9,7 @@ import { AcademicStructureModule } from './modules/academic-structure/academic-s
 import { AcademicYearsModule } from './modules/academic-years/academic-years.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { SchoolsModule } from './modules/schools/schools.module';
+import { StaffModule } from './modules/staff/staff.module';
 import { StudentsModule } from './modules/students/students.module';
 import { SubjectsModule } from './modules/subjects/subjects.module';
 import { UsersModule } from './modules/users/users.module';
@@ -28,6 +29,7 @@ import { UsersModule } from './modules/users/users.module';
     StudentsModule,
     AcademicStructureModule,
     SubjectsModule,
+    StaffModule,
   ],
   controllers: [AppController],
   providers: [AppService],

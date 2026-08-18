@@ -83,6 +83,11 @@ const permissions = [
   { key: "combinations.create", description: "Create subject combinations" },
   { key: "combinations.update", description: "Update subject combinations" },
   { key: "combinations.delete", description: "Delete subject combinations" },
+
+  { key: "teacher_assignments.read", description: "View teaching assignments" },
+  { key: "teacher_assignments.create", description: "Create teaching assignments" },
+  { key: "teacher_assignments.update", description: "Update teaching assignments" },
+  { key: "teacher_assignments.delete", description: "Deactivate or remove teaching assignments" },
 ];
 
 const roles = [
@@ -174,6 +179,10 @@ const rolePermissions: Record<string, string[]> = {
     "combinations.create",
     "combinations.update",
     "combinations.delete",
+    "teacher_assignments.read",
+    "teacher_assignments.create",
+    "teacher_assignments.update",
+    "teacher_assignments.delete",
   ],
 
   TEACHER: [
@@ -191,6 +200,7 @@ const rolePermissions: Record<string, string[]> = {
     "subjects.read",
     "subject_offerings.read",
     "combinations.read",
+    "teacher_assignments.read",
   ],
 
   STUDENT: [
@@ -637,6 +647,94 @@ async function main() {
       });
     }
   }
+
+  console.log("Seeding demonstration school staff configuration...");
+
+  const staffCategorySeeds = [
+    { code: "TEACHING", name: "Teaching", displayOrder: 1 },
+    { code: "NON_TEACHING", name: "Non-teaching", displayOrder: 2 },
+    { code: "ADMINISTRATION", name: "Administration", displayOrder: 3 },
+    { code: "SUPPORT", name: "Support", displayOrder: 4 },
+  ];
+
+  for (const staffCategory of staffCategorySeeds) {
+    await prisma.staffCategory.upsert({
+      where: {
+        schoolId_code: {
+          schoolId: school.id,
+          code: staffCategory.code,
+        },
+      },
+      update: {
+        name: staffCategory.name,
+        displayOrder: staffCategory.displayOrder,
+      },
+      create: {
+        schoolId: school.id,
+        code: staffCategory.code,
+        name: staffCategory.name,
+        displayOrder: staffCategory.displayOrder,
+      },
+    });
+  }
+
+  const departmentSeeds = [
+    { code: "SCIENCE", name: "Science" },
+    { code: "HUMANITIES", name: "Humanities" },
+    { code: "LANGUAGES", name: "Languages" },
+    { code: "MATHEMATICS", name: "Mathematics" },
+    { code: "ICT", name: "ICT" },
+  ];
+
+  for (const department of departmentSeeds) {
+    await prisma.department.upsert({
+      where: {
+        schoolId_code: { schoolId: school.id, code: department.code },
+      },
+      update: { name: department.name },
+      create: {
+        schoolId: school.id,
+        code: department.code,
+        name: department.name,
+      },
+    });
+  }
+
+  const staffPositionSeeds = [
+    { code: "HEAD_TEACHER", name: "Head Teacher" },
+    { code: "DEPUTY_HEAD_TEACHER", name: "Deputy Head Teacher" },
+    { code: "TEACHER", name: "Teacher" },
+    { code: "DIRECTOR_OF_STUDIES", name: "Director of Studies" },
+    { code: "HEAD_OF_DEPARTMENT", name: "Head of Department" },
+    { code: "CLASS_TEACHER", name: "Class Teacher" },
+    { code: "BURSAR", name: "Bursar" },
+    { code: "ACCOUNTANT", name: "Accountant" },
+    { code: "SECRETARY", name: "Secretary" },
+    { code: "LIBRARIAN", name: "Librarian" },
+    { code: "NURSE", name: "Nurse" },
+    { code: "LABORATORY_ASSISTANT", name: "Laboratory Assistant" },
+    { code: "DRIVER", name: "Driver" },
+    { code: "CLEANER", name: "Cleaner" },
+    { code: "SECURITY_OFFICER", name: "Security Officer" },
+    { code: "COOK", name: "Cook" },
+    { code: "OTHER", name: "Other" },
+  ];
+
+  for (const staffPosition of staffPositionSeeds) {
+    await prisma.staffPosition.upsert({
+      where: {
+        schoolId_code: { schoolId: school.id, code: staffPosition.code },
+      },
+      update: { name: staffPosition.name },
+      create: {
+        schoolId: school.id,
+        code: staffPosition.code,
+        name: staffPosition.name,
+      },
+    });
+  }
+
+  console.log("Seeded demonstration school staff configuration.");
 
   console.log("Seeded demonstration school academic structure.");
   console.log("Seed completed successfully.");
