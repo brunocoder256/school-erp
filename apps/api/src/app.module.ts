@@ -5,10 +5,12 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { validate } from './config/env.validation';
 import { PrismaModule } from './database/prisma.module';
+import { AcademicStructureModule } from './modules/academic-structure/academic-structure.module';
 import { AcademicYearsModule } from './modules/academic-years/academic-years.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { SchoolsModule } from './modules/schools/schools.module';
 import { StudentsModule } from './modules/students/students.module';
+import { SubjectsModule } from './modules/subjects/subjects.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -24,6 +26,8 @@ import { UsersModule } from './modules/users/users.module';
     UsersModule,
     AcademicYearsModule,
     StudentsModule,
+    AcademicStructureModule,
+    SubjectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

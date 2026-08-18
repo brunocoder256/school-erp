@@ -555,22 +555,22 @@ Local development server
 21. Next Milestones
 Milestone 2 — Project Documentation & Governance
 
-Current task:
+Implemented:
 
-Establish permanent documentation
-Establish development conventions
+Permanent documentation
+Development conventions
 Commit documentation to GitHub
 Milestone 3 — Backend Foundation
 
-Planned:
+Implemented:
 
-Create NestJS application
-Add it to the pnpm workspace
-Establish API structure
-Verify frontend/backend development workflow
+NestJS application
+pnpm workspace integration
+API structure
+Frontend/backend development workflow
 Milestone 4 — Infrastructure
 
-Planned:
+Implemented:
 
 Docker Compose
 PostgreSQL
@@ -578,7 +578,7 @@ Redis
 Environment configuration
 Milestone 5 — Database
 
-Planned:
+Implemented:
 
 Prisma
 Database connection
@@ -586,7 +586,7 @@ Initial schema
 Migrations
 Milestone 6 — Identity and Access
 
-Planned:
+Implemented:
 
 Users
 Authentication
@@ -595,7 +595,7 @@ Permissions
 School/tenant isolation
 Milestone 7 — Core School Domain
 
-Planned:
+Implemented:
 
 Schools
 Academic years
@@ -605,7 +605,16 @@ Subjects
 Students
 Staff
 Guardians
-Milestone 8 — Academic Operations
+Milestone 8 — Academic Structure & Uganda Education Model
+
+Implemented:
+
+Configurable education sections
+Configurable academic levels and progression
+Academic classes and streams
+Subject catalog, categories, offerings and combinations
+Tenant-scoped seed data for a representative Ugandan school
+Milestone 9 — Academic Operations
 
 Planned:
 
@@ -614,7 +623,7 @@ Exams
 Marks
 Report cards
 Timetables
-Milestone 9 — Finance
+Milestone 10 — Finance
 
 Planned:
 
@@ -623,7 +632,7 @@ Invoices
 Payments
 Balances
 Financial reporting
-Milestone 10 — PWA and Offline Capabilities
+Milestone 11 — PWA and Offline Capabilities
 
 Planned:
 
@@ -650,10 +659,19 @@ Status: 🟢 Active Development
 
 Frontend: 🟢 Running
 
-Backend: 🔴 Not yet created
+Backend: 🟢 Running (NestJS API with Prisma)
 
-Database: 🔴 Not yet configured
+Database: 🟢 PostgreSQL configured and migrated
 
 PWA: 🔴 Not yet implemented
 
 Production: 🔴 Not yet deployed
+
+Implemented milestones: Backend foundation, Infrastructure, Database,
+Identity and Access, School domain (academic years, terms, students,
+enrollment), and the Academic Structure & Uganda Education Model foundation
+(configurable sections, levels, progression, classes, streams, subject
+catalog, offerings, combinations).
+
+Planned milestones: Academic operations (attendance, exams, marks, report
+cards, timetables), Finance, PWA and offline capabilities.

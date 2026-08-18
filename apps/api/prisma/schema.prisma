@@ -76,12 +76,20 @@ model School {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  academicYears   AcademicYear[]
-  memberships     SchoolMembership[]
-  userRoles       UserRole[]
-  students        Student[]
-  academicClasses AcademicClass[]
-  guardians       Guardian[]
+  academicYears            AcademicYear[]
+  memberships              SchoolMembership[]
+  userRoles                UserRole[]
+  students                 Student[]
+  academicClasses          AcademicClass[]
+  guardians                Guardian[]
+  educationSections        EducationSection[]
+  academicOrganizations    AcademicOrganization[]
+  academicLevels           AcademicLevel[]
+  academicLevelProgressions AcademicLevelProgression[]
+  subjectCategories        SubjectCategory[]
+  subjects                 Subject[]
+  subjectOfferings         SubjectOffering[]
+  subjectCombinations      SubjectCombination[]
 }
 
 model AcademicYear {
@@ -98,6 +106,8 @@ model AcademicYear {
 
   terms       Term[]
   enrollments Enrollment[]
+
+  subjectOfferings SubjectOffering[]
 
   @@unique([schoolId, name])
 }
@@ -233,7 +243,6 @@ model AcademicClass {
   id          String   @id @default(uuid())
   name        String
   code        String
-  level       Int
   description String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -242,11 +251,15 @@ model AcademicClass {
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  academicLevelId String
+  academicLevel   AcademicLevel @relation(fields: [academicLevelId], references: [id], onDelete: Restrict)
+
   streams     Stream[]
   enrollments Enrollment[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
+  @@index([academicLevelId])
 }
 
 model Stream {
@@ -336,4 +349,203 @@ model StudentGuardian {
 
   @@unique([studentId, guardianId])
   @@index([guardianId])
+}
+
+model EducationSection {
+  id           String   @id @default(uuid())
+  name         String
+  code         String
+  description  String?
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  levels AcademicLevel[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model AcademicOrganization {
+  id          String   @id @default(uuid())
+  name        String
+  code        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  levels AcademicLevel[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model AcademicLevel {
+  id           String   @id @default(uuid())
+  name         String
+  code         String
+  levelNumber  Int
+  description  String?
+  displayOrder Int      @default(0)
+  canEnroll    Boolean  @default(true)
+  isTerminal   Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  sectionId String
+  section   EducationSection @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+
+  academicOrganizationId String
+  academicOrganization   AcademicOrganization @relation(fields: [academicOrganizationId], references: [id], onDelete: Restrict)
+
+  classes        AcademicClass[]
+  fromProgressions AcademicLevelProgression[] @relation("LevelProgressionFrom")
+  toProgressions   AcademicLevelProgression[] @relation("LevelProgressionTo")
+  subjectOfferings SubjectOffering[]
+  subjectCombinations SubjectCombination[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@index([sectionId])
+}
+
+model AcademicLevelProgression {
+  id           String   @id @default(uuid())
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  fromLevelId String
+  fromLevel   AcademicLevel @relation("LevelProgressionFrom", fields: [fromLevelId], references: [id], onDelete: Restrict)
+
+  toLevelId String
+  toLevel   AcademicLevel @relation("LevelProgressionTo", fields: [toLevelId], references: [id], onDelete: Restrict)
+
+  @@unique([schoolId, fromLevelId, toLevelId])
+  @@index([schoolId])
+  @@index([fromLevelId])
+}
+
+model SubjectCategory {
+  id           String   @id @default(uuid())
+  name         String
+  code         String
+  description  String?
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  subjects Subject[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model Subject {
+  id           String   @id @default(uuid())
+  name         String
+  code         String
+  shortName    String?
+  description  String?
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   SubjectCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  offerings    SubjectOffering[]
+  combinations SubjectCombinationSubject[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@index([categoryId])
+}
+
+model SubjectOffering {
+  id        String   @id @default(uuid())
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  academicLevelId String
+  academicLevel   AcademicLevel @relation(fields: [academicLevelId], references: [id], onDelete: Restrict)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  @@unique([schoolId, subjectId, academicLevelId, academicYearId])
+  @@index([schoolId])
+  @@index([academicLevelId])
+  @@index([academicYearId])
+}
+
+model SubjectCombination {
+  id           String   @id @default(uuid())
+  code         String
+  name         String
+  description  String?
+  minSubjects  Int?
+  maxSubjects  Int?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  academicLevelId String
+  academicLevel   AcademicLevel @relation(fields: [academicLevelId], references: [id], onDelete: Restrict)
+
+  subjects SubjectCombinationSubject[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@index([academicLevelId])
+}
+
+model SubjectCombinationSubject {
+  id           String   @id @default(uuid())
+  isRequired   Boolean  @default(false)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  combinationId String
+  combination   SubjectCombination @relation(fields: [combinationId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@unique([combinationId, subjectId])
+  @@index([subjectId])
 }
