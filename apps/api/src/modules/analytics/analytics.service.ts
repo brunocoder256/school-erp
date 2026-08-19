@@ -642,6 +642,415 @@ export class AnalyticsService {
     };
   }
 
+  // -----------------------------------------------------------------------
+  // M22-P3: Class, Stream & Subject Group Analytics
+  // -----------------------------------------------------------------------
+
+  /**
+   * Class performance summary — aggregated metrics for all learners in a class.
+   * Uses finalized M12 results only. Handles non-numeric competency outcomes.
+   */
+  async classPerformanceSummary(
+    classId: string,
+    schoolId: string,
+    academicYearId?: string,
+    termId?: string,
+    subjectId?: string,
+  ) {
+    const academicClass = await this.prisma.academicClass.findFirst({
+      where: { id: classId, schoolId },
+      select: { id: true, name: true, code: true },
+    });
+
+    if (!academicClass) {
+      throw new NotFoundException('Academic class not found in this school.');
+    }
+
+    const enrollmentWhere: Record<string, unknown> = { academicClassId: classId };
+    if (academicYearId) enrollmentWhere.academicYearId = academicYearId;
+
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: enrollmentWhere,
+      select: {
+        id: true,
+        student: { select: { firstName: true, middleName: true, lastName: true, preferredName: true, admissionNumber: true } },
+      },
+    });
+
+    const enrollmentIds = enrollments.map((e) => e.id);
+
+    const resultsWhere: Record<string, unknown> = {
+      schoolId,
+      enrollmentId: { in: enrollmentIds },
+      status: { in: FINALIZED_STATUSES },
+    };
+    if (academicYearId) resultsWhere.academicYearId = academicYearId;
+    if (termId) resultsWhere.termId = termId;
+    if (subjectId) resultsWhere.subjectId = subjectId;
+
+    const results = await this.prisma.learnerResult.findMany({
+      where: resultsWhere,
+      include: {
+        subject: { select: { id: true, name: true, code: true } },
+        enrollment: { select: { id: true, student: { select: { firstName: true, middleName: true, lastName: true, preferredName: true, admissionNumber: true } } } },
+      },
+    });
+
+    return this._buildGroupSummary(
+      academicClass.id, academicClass.name, academicClass.code, 'CLASS',
+      enrollments.length, results, academicYearId, termId,
+      { subjectBreakdown: true, learnerBreakdown: true },
+    );
+  }
+
+  /**
+   * Stream performance summary — aggregated metrics for all learners in a stream.
+   */
+  async streamPerformanceSummary(
+    streamId: string,
+    schoolId: string,
+    academicYearId?: string,
+    termId?: string,
+    subjectId?: string,
+  ) {
+    const stream = await this.prisma.stream.findFirst({
+      where: { id: streamId, class: { schoolId } },
+      select: { id: true, name: true, code: true, classId: true },
+    });
+
+    if (!stream) {
+      throw new NotFoundException('Stream not found in this school.');
+    }
+
+    const enrollmentWhere: Record<string, unknown> = { streamId };
+    if (academicYearId) enrollmentWhere.academicYearId = academicYearId;
+
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: enrollmentWhere,
+      select: {
+        id: true,
+        student: { select: { firstName: true, middleName: true, lastName: true, preferredName: true, admissionNumber: true } },
+      },
+    });
+
+    const enrollmentIds = enrollments.map((e) => e.id);
+
+    const resultsWhere: Record<string, unknown> = {
+      schoolId,
+      enrollmentId: { in: enrollmentIds },
+      status: { in: FINALIZED_STATUSES },
+    };
+    if (academicYearId) resultsWhere.academicYearId = academicYearId;
+    if (termId) resultsWhere.termId = termId;
+    if (subjectId) resultsWhere.subjectId = subjectId;
+
+    const results = await this.prisma.learnerResult.findMany({
+      where: resultsWhere,
+      include: {
+        subject: { select: { id: true, name: true, code: true } },
+        enrollment: { select: { id: true, student: { select: { firstName: true, middleName: true, lastName: true, preferredName: true, admissionNumber: true } } } },
+      },
+    });
+
+    return this._buildGroupSummary(
+      stream.id, stream.name, stream.code, 'STREAM',
+      enrollments.length, results, academicYearId, termId,
+      { subjectBreakdown: true, learnerBreakdown: true },
+    );
+  }
+
+  /**
+   * Subject performance summary — aggregated metrics for a subject across the school
+   * or scoped to a class/stream.
+   */
+  async subjectPerformanceSummary(
+    subjectId: string,
+    schoolId: string,
+    academicYearId?: string,
+    termId?: string,
+    classId?: string,
+    streamId?: string,
+  ) {
+    const subject = await this.prisma.subject.findFirst({
+      where: { id: subjectId, schoolId },
+      select: { id: true, name: true, code: true },
+    });
+
+    if (!subject) {
+      throw new NotFoundException('Subject not found in this school.');
+    }
+
+    const enrollmentWhere: Record<string, unknown> = {};
+    if (classId) enrollmentWhere.academicClassId = classId;
+    if (streamId) enrollmentWhere.streamId = streamId;
+    if (academicYearId) enrollmentWhere.academicYearId = academicYearId;
+
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: enrollmentWhere,
+      select: {
+        id: true,
+        academicClassId: true,
+        student: { select: { firstName: true, middleName: true, lastName: true, preferredName: true, admissionNumber: true } },
+        academicClass: { select: { id: true, name: true, code: true } },
+      },
+    });
+
+    const enrollmentIds = enrollments.map((e) => e.id);
+
+    const resultsWhere: Record<string, unknown> = {
+      schoolId,
+      subjectId,
+      enrollmentId: { in: enrollmentIds },
+      status: { in: FINALIZED_STATUSES },
+    };
+    if (academicYearId) resultsWhere.academicYearId = academicYearId;
+    if (termId) resultsWhere.termId = termId;
+
+    const results = await this.prisma.learnerResult.findMany({
+      where: resultsWhere,
+      include: {
+        enrollment: {
+          select: {
+            id: true,
+            student: { select: { firstName: true, middleName: true, lastName: true, preferredName: true, admissionNumber: true } },
+            academicClass: { select: { id: true, name: true, code: true } },
+          },
+        },
+      },
+    });
+
+    return this._buildGroupSummary(
+      subject.id, subject.name, subject.code, 'SUBJECT',
+      enrollments.length, results, academicYearId, termId,
+      { subjectBreakdown: false, learnerBreakdown: true, classBreakdown: true },
+    );
+  }
+
+  /**
+   * Class period comparison — term-by-term performance for a class.
+   * Does not assume a fixed number of terms.
+   */
+  async classPeriodComparison(
+    classId: string,
+    schoolId: string,
+    academicYearId: string,
+    subjectId?: string,
+  ) {
+    const academicClass = await this.prisma.academicClass.findFirst({
+      where: { id: classId, schoolId },
+      select: { id: true, name: true, code: true },
+    });
+
+    if (!academicClass) {
+      throw new NotFoundException('Academic class not found in this school.');
+    }
+
+    return this._groupPeriodComparison(
+      academicClass.id, academicClass.name, academicClass.code, 'CLASS',
+      schoolId, academicYearId,
+      { academicClassId: classId }, subjectId,
+    );
+  }
+
+  /**
+   * Stream period comparison — term-by-term performance for a stream.
+   */
+  async streamPeriodComparison(
+    streamId: string,
+    schoolId: string,
+    academicYearId: string,
+    subjectId?: string,
+  ) {
+    const stream = await this.prisma.stream.findFirst({
+      where: { id: streamId, class: { schoolId } },
+      select: { id: true, name: true, code: true },
+    });
+
+    if (!stream) {
+      throw new NotFoundException('Stream not found in this school.');
+    }
+
+    return this._groupPeriodComparison(
+      stream.id, stream.name, stream.code, 'STREAM',
+      schoolId, academicYearId,
+      { streamId }, subjectId,
+    );
+  }
+
+  /**
+   * Subject period comparison — term-by-term performance for a subject.
+   */
+  async subjectPeriodComparison(
+    subjectId: string,
+    schoolId: string,
+    academicYearId: string,
+    classId?: string,
+  ) {
+    const subject = await this.prisma.subject.findFirst({
+      where: { id: subjectId, schoolId },
+      select: { id: true, name: true, code: true },
+    });
+
+    if (!subject) {
+      throw new NotFoundException('Subject not found in this school.');
+    }
+
+    const enrollmentFilter: Record<string, unknown> = {};
+    if (classId) enrollmentFilter.academicClassId = classId;
+
+    return this._groupPeriodComparison(
+      subject.id, subject.name, subject.code, 'SUBJECT',
+      schoolId, academicYearId,
+      enrollmentFilter, subjectId,
+    );
+  }
+
+  /**
+   * Compare classes within an academic level (or all classes in the school).
+   */
+  async compareClasses(
+    schoolId: string,
+    academicYearId: string,
+    academicLevelId?: string,
+    termId?: string,
+    subjectId?: string,
+  ) {
+    const classWhere: Record<string, unknown> = { schoolId };
+    if (academicLevelId) classWhere.academicLevelId = academicLevelId;
+
+    const classes = await this.prisma.academicClass.findMany({
+      where: classWhere,
+      select: { id: true, name: true, code: true },
+    });
+
+    const entries = await Promise.all(
+      classes.map(async (c) => {
+        return this._buildComparisonEntry(
+          c.id, c.name, c.code, schoolId, academicYearId, termId,
+          { academicClassId: c.id }, subjectId,
+        );
+      }),
+    );
+
+    return {
+      comparisonType: 'CLASSES' as const,
+      academicYearId,
+      termId,
+      entries: entries.filter((e) => e.totalResults > 0),
+    };
+  }
+
+  /**
+   * Compare streams within a class.
+   */
+  async compareStreams(
+    schoolId: string,
+    classId: string,
+    academicYearId: string,
+    termId?: string,
+    subjectId?: string,
+  ) {
+    const academicClass = await this.prisma.academicClass.findFirst({
+      where: { id: classId, schoolId },
+      select: { id: true },
+    });
+
+    if (!academicClass) {
+      throw new NotFoundException('Academic class not found in this school.');
+    }
+
+    const streams = await this.prisma.stream.findMany({
+      where: { classId },
+      select: { id: true, name: true, code: true },
+    });
+
+    const entries = await Promise.all(
+      streams.map(async (s) => {
+        return this._buildComparisonEntry(
+          s.id, s.name, s.code, schoolId, academicYearId, termId,
+          { streamId: s.id }, subjectId,
+        );
+      }),
+    );
+
+    return {
+      comparisonType: 'STREAMS' as const,
+      academicYearId,
+      termId,
+      entries: entries.filter((e) => e.totalResults > 0),
+    };
+  }
+
+  /**
+   * Compare subjects within a class.
+   */
+  async compareSubjects(
+    schoolId: string,
+    classId: string,
+    academicYearId: string,
+    termId?: string,
+  ) {
+    const academicClass = await this.prisma.academicClass.findFirst({
+      where: { id: classId, schoolId },
+      select: { id: true, name: true },
+    });
+
+    if (!academicClass) {
+      throw new NotFoundException('Academic class not found in this school.');
+    }
+
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { academicClassId: classId, academicYearId },
+      select: { id: true },
+    });
+    const enrollmentIds = enrollments.map((e) => e.id);
+
+    const results = await this.prisma.learnerResult.findMany({
+      where: {
+        schoolId,
+        enrollmentId: { in: enrollmentIds },
+        academicYearId,
+        status: { in: FINALIZED_STATUSES },
+        ...(termId ? { termId } : {}),
+      },
+      include: { subject: { select: { id: true, name: true, code: true } } },
+    });
+
+    const subjectMap = new Map<string, { id: string; name: string; code: string; scores: number[]; grades: string[] }>();
+
+    for (const r of results) {
+      if (!r.subject) continue;
+      if (!subjectMap.has(r.subject.id)) {
+        subjectMap.set(r.subject.id, { id: r.subject.id, name: r.subject.name, code: r.subject.code, scores: [], grades: [] });
+      }
+      const entry = subjectMap.get(r.subject.id)!;
+      if (r.finalScore != null) entry.scores.push(Number(r.finalScore));
+      if (r.grade) entry.grades.push(r.grade);
+    }
+
+    const entries = Array.from(subjectMap.values()).map((s) => {
+      const avg = s.scores.length > 0
+        ? Number((s.scores.reduce((a, b) => a + b, 0) / s.scores.length).toFixed(2))
+        : null;
+      return {
+        groupId: s.id,
+        groupName: s.name,
+        groupCode: s.code,
+        learnerCount: enrollmentIds.length,
+        totalResults: s.scores.length + s.grades.length,
+        averageScore: avg,
+        modeGrade: this._mode(this._countBy(s.grades)),
+      };
+    });
+
+    return {
+      comparisonType: 'SUBJECTS' as const,
+      academicYearId,
+      termId,
+      entries,
+    };
+  }
+
   // --- Helpers ---
 
   private _countBy(keys: string[]): Record<string, number> {
@@ -686,6 +1095,340 @@ export class AnalyticsService {
       q2: Number(percentile(sorted, 0.5).toFixed(2)),
       q3: Number(percentile(sorted, 0.75).toFixed(2)),
     };
+  }
+
+  /**
+   * Build a group performance summary from a set of finalized results.
+   * Shared by class, stream, and subject performance methods.
+   */
+  private _buildGroupSummary(
+    groupId: string,
+    groupName: string,
+    groupCode: string,
+    groupType: 'CLASS' | 'STREAM' | 'SUBJECT',
+    learnerCount: number,
+    results: Array<{
+      finalScore: unknown;
+      grade: string | null;
+      descriptor: string | null;
+      achievementLevel: string | null;
+      assessmentId?: string;
+      subject?: { id: string; name: string; code: string } | null;
+      enrollment?: {
+        id: string;
+        student: { firstName: string; middleName?: string | null; lastName: string; preferredName?: string | null; admissionNumber: string };
+        academicClass?: { id: string; name: string; code: string } | null;
+      } | null;
+    }>,
+    academicYearId?: string,
+    termId?: string,
+    options?: { subjectBreakdown?: boolean; learnerBreakdown?: boolean; classBreakdown?: boolean },
+  ) {
+    const scores: number[] = [];
+    const grades: string[] = [];
+    const descriptors: string[] = [];
+    const achievements: string[] = [];
+
+    for (const r of results) {
+      if (r.finalScore != null) scores.push(Number(r.finalScore));
+      if (r.grade) grades.push(r.grade);
+      if (r.descriptor) descriptors.push(r.descriptor);
+      if (r.achievementLevel) achievements.push(r.achievementLevel);
+    }
+
+    const averageScore = scores.length > 0
+      ? Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2))
+      : null;
+    const minScore = scores.length > 0 ? Math.min(...scores) : null;
+    const maxScore = scores.length > 0 ? Math.max(...scores) : null;
+
+    const scoreDistribution = scores.length > 0
+      ? {
+        minScore: Math.min(...scores),
+        maxScore: Math.max(...scores),
+        averageScore,
+        standardDeviation: this._stdDev(scores, averageScore!),
+        quartiles: this._computeQuartiles(scores),
+      }
+      : {
+        minScore: null as number | null,
+        maxScore: null as number | null,
+        averageScore: null as number | null,
+        standardDeviation: null as number | null,
+        quartiles: { q1: null, q2: null, q3: null } as { q1: number | null; q2: number | null; q3: number | null },
+      };
+
+    const gradeCounts = this._countBy(grades);
+    const gradeDistribution = Object.entries(gradeCounts).map(([grade, count]) => ({
+      grade,
+      count: Number(count),
+      percentage: results.length > 0 ? Number((count / results.length * 100).toFixed(2)) : 0,
+    }));
+
+    const achievementCounts = this._countBy(achievements);
+    const achievementDistribution = Object.entries(achievementCounts).map(([level, count]) => ({
+      achievementLevel: level,
+      count: Number(count),
+      percentage: results.length > 0 ? Number((count / results.length * 100).toFixed(2)) : 0,
+    }));
+
+    const completion = {
+      totalAssessments: results.length,
+      totalResults: results.length,
+      completionPercentage: results.length > 0 ? 100 : 0,
+    };
+
+    const summary: Record<string, unknown> = {
+      groupId,
+      groupName,
+      groupCode,
+      groupType,
+      academicYearId,
+      termId,
+      learnerCount,
+      totalResults: results.length,
+      numericResultCount: scores.length,
+      nonNumericResultCount: results.length - scores.length,
+      averageScore,
+      minScore,
+      maxScore,
+      modeGrade: this._mode(gradeCounts),
+      modeDescriptor: this._mode(this._countBy(descriptors)),
+      modeAchievementLevel: this._mode(achievementCounts),
+      scoreDistribution,
+      gradeDistribution,
+      achievementDistribution,
+      completion,
+    };
+
+    if (options?.subjectBreakdown) {
+      const subjectMap = new Map<string, { subjectId: string; subjectName: string; subjectCode: string; scores: number[]; grades: string[] }>();
+      for (const r of results) {
+        if (!r.subject) continue;
+        if (!subjectMap.has(r.subject.id)) {
+          subjectMap.set(r.subject.id, { subjectId: r.subject.id, subjectName: r.subject.name, subjectCode: r.subject.code, scores: [], grades: [] });
+        }
+        const entry = subjectMap.get(r.subject.id)!;
+        if (r.finalScore != null) entry.scores.push(Number(r.finalScore));
+        if (r.grade) entry.grades.push(r.grade);
+      }
+      summary['subjectBreakdown'] = Array.from(subjectMap.values()).map((s) => ({
+        subjectId: s.subjectId,
+        subjectName: s.subjectName,
+        subjectCode: s.subjectCode,
+        resultCount: s.scores.length + s.grades.length,
+        averageScore: s.scores.length > 0 ? Number((s.scores.reduce((a, b) => a + b, 0) / s.scores.length).toFixed(2)) : null,
+        modeGrade: this._mode(this._countBy(s.grades)),
+      }));
+    }
+
+    if (options?.learnerBreakdown) {
+      const learnerMap = new Map<string, { enrollmentId: string; studentName: string; admissionNumber: string; scores: number[]; grades: string[] }>();
+      for (const r of results) {
+        if (!r.enrollment) continue;
+        const enr = r.enrollment;
+        if (!learnerMap.has(enr.id)) {
+          learnerMap.set(enr.id, {
+            enrollmentId: enr.id,
+            studentName: this._buildStudentName(enr.student),
+            admissionNumber: enr.student.admissionNumber,
+            scores: [],
+            grades: [],
+          });
+        }
+        const entry = learnerMap.get(enr.id)!;
+        if (r.finalScore != null) entry.scores.push(Number(r.finalScore));
+        if (r.grade) entry.grades.push(r.grade);
+      }
+      summary['learnerBreakdown'] = Array.from(learnerMap.values()).map((l) => ({
+        enrollmentId: l.enrollmentId,
+        studentName: l.studentName,
+        admissionNumber: l.admissionNumber,
+        resultCount: l.scores.length + l.grades.length,
+        averageScore: l.scores.length > 0 ? Number((l.scores.reduce((a, b) => a + b, 0) / l.scores.length).toFixed(2)) : null,
+        modeGrade: this._mode(this._countBy(l.grades)),
+      }));
+    }
+
+    if (options?.classBreakdown) {
+      const classMap = new Map<string, { classId: string; className: string; classCode: string; scores: number[]; grades: string[] }>();
+      for (const r of results) {
+        if (!r.enrollment?.academicClass) continue;
+        const cls = r.enrollment.academicClass;
+        if (!classMap.has(cls.id)) {
+          classMap.set(cls.id, { classId: cls.id, className: cls.name, classCode: cls.code, scores: [], grades: [] });
+        }
+        const entry = classMap.get(cls.id)!;
+        if (r.finalScore != null) entry.scores.push(Number(r.finalScore));
+        if (r.grade) entry.grades.push(r.grade);
+      }
+      summary['classBreakdown'] = Array.from(classMap.values()).map((c) => ({
+        classId: c.classId,
+        className: c.className,
+        classCode: c.classCode,
+        resultCount: c.scores.length + c.grades.length,
+        averageScore: c.scores.length > 0 ? Number((c.scores.reduce((a, b) => a + b, 0) / c.scores.length).toFixed(2)) : null,
+        modeGrade: this._mode(this._countBy(c.grades)),
+      }));
+    }
+
+    return summary;
+  }
+
+  /**
+   * Period comparison for any group type (class/stream/subject).
+   * Accepts an enrollment filter to scope which enrollments belong to the group.
+   */
+  private async _groupPeriodComparison(
+    groupId: string,
+    groupName: string,
+    groupCode: string,
+    groupType: 'CLASS' | 'STREAM' | 'SUBJECT',
+    schoolId: string,
+    academicYearId: string,
+    enrollmentFilter: Record<string, unknown>,
+    subjectId?: string,
+  ) {
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { id: academicYearId, schoolId },
+      include: { terms: { orderBy: { name: 'asc' } } },
+    });
+
+    if (!academicYear) {
+      throw new NotFoundException('Academic year not found in this school.');
+    }
+
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { ...enrollmentFilter, academicYearId },
+      select: { id: true },
+    });
+    const enrollmentIds = enrollments.map((e) => e.id);
+
+    const points: Array<{
+      academicYearId: string;
+      academicYearName: string;
+      termId?: string;
+      termName?: string;
+      averageScore: number | null;
+      resultCount: number;
+      gradeDistribution: Record<string, number>;
+    }> = [];
+
+    // Year aggregate
+    const yearWhere: Record<string, unknown> = {
+      schoolId,
+      enrollmentId: { in: enrollmentIds },
+      academicYearId,
+      status: { in: FINALIZED_STATUSES },
+      finalScore: { not: null },
+    };
+    if (subjectId) yearWhere.subjectId = subjectId;
+
+    const yearResults = await this.prisma.learnerResult.findMany({
+      where: yearWhere,
+      select: { finalScore: true, grade: true },
+    });
+    const yearScores = yearResults.map((r) => Number(r.finalScore));
+    points.push({
+      academicYearId,
+      academicYearName: academicYear.name,
+      termName: 'All Terms',
+      averageScore: yearScores.length > 0 ? Number((yearScores.reduce((a, b) => a + b, 0) / yearScores.length).toFixed(2)) : null,
+      resultCount: yearResults.length,
+      gradeDistribution: this._countBy(yearResults.map((r) => r.grade).filter((g): g is string => g != null)),
+    });
+
+    // Per-term
+    for (const term of academicYear.terms) {
+      const termWhere: Record<string, unknown> = {
+        schoolId,
+        enrollmentId: { in: enrollmentIds },
+        academicYearId,
+        termId: term.id,
+        status: { in: FINALIZED_STATUSES },
+        finalScore: { not: null },
+      };
+      if (subjectId) termWhere.subjectId = subjectId;
+
+      const termResults = await this.prisma.learnerResult.findMany({
+        where: termWhere,
+        select: { finalScore: true, grade: true },
+      });
+      const termScores = termResults.map((r) => Number(r.finalScore));
+      points.push({
+        academicYearId,
+        academicYearName: academicYear.name,
+        termId: term.id,
+        termName: term.name,
+        averageScore: termScores.length > 0 ? Number((termScores.reduce((a, b) => a + b, 0) / termScores.length).toFixed(2)) : null,
+        resultCount: termResults.length,
+        gradeDistribution: this._countBy(termResults.map((r) => r.grade).filter((g): g is string => g != null)),
+      });
+    }
+
+    return {
+      groupId,
+      groupName,
+      groupType,
+      academicYearId,
+      comparisonPoints: points,
+    };
+  }
+
+  /**
+   * Build a comparison entry for a single group within a comparison.
+   */
+  private async _buildComparisonEntry(
+    groupId: string,
+    groupName: string,
+    groupCode: string,
+    schoolId: string,
+    academicYearId: string,
+    termId: string | undefined,
+    enrollmentFilter: Record<string, unknown>,
+    subjectId?: string,
+  ) {
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { ...enrollmentFilter, academicYearId },
+      select: { id: true },
+    });
+    const enrollmentIds = enrollments.map((e) => e.id);
+
+    const where: Record<string, unknown> = {
+      schoolId,
+      enrollmentId: { in: enrollmentIds },
+      academicYearId,
+      status: { in: FINALIZED_STATUSES },
+    };
+    if (termId) where.termId = termId;
+    if (subjectId) where.subjectId = subjectId;
+
+    const results = await this.prisma.learnerResult.findMany({
+      where,
+      select: { finalScore: true, grade: true },
+    });
+
+    const scores = results.map((r) => Number(r.finalScore)).filter((s) => !isNaN(s));
+    const grades = results.map((r) => r.grade).filter((g): g is string => g != null);
+
+    return {
+      groupId,
+      groupName,
+      groupCode,
+      learnerCount: enrollmentIds.length,
+      totalResults: results.length,
+      averageScore: scores.length > 0 ? Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)) : null,
+      modeGrade: this._mode(this._countBy(grades)),
+    };
+  }
+
+  private _stdDev(scores: number[], mean: number): number {
+    if (scores.length === 0) return 0;
+    return Number(
+      Math.sqrt(
+        scores.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / scores.length,
+      ).toFixed(2),
+    );
   }
 
   /**

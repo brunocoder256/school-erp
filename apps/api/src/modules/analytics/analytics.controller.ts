@@ -18,7 +18,15 @@ import { Permissions } from '../identity/decorators/permissions.decorator';
 import { AuthGuard } from '../identity/guards/auth.guard';
 import { PermissionGuard } from '../identity/guards/permission.guard';
 import { AnalyticsService } from './analytics.service';
-import { StudentPerformanceQueryDto, StudentRankingQueryDto } from './dto/student-performance.dto';
+import {
+  StudentPerformanceQueryDto,
+  StudentRankingQueryDto,
+} from './dto/student-performance.dto';
+import {
+  GroupPerformanceQueryDto,
+  GroupPeriodComparisonQueryDto,
+  ComparisonQueryDto,
+} from './dto/group-analytics.dto';
 
 @ApiTags('analytics')
 @ApiBearerAuth()
@@ -163,6 +171,197 @@ export class AnalyticsController {
       query.scope,
       query.academicClassId,
       query.streamId,
+      query.termId,
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // M22-P3: Class, Stream & Subject Analytics
+  // -----------------------------------------------------------------------
+
+  @Get('classes/:classId/performance')
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('analytics.read')
+  @ApiOperation({ summary: 'Get class performance summary' })
+  @ApiParam({ name: 'classId', type: String })
+  @ApiOkResponse({ description: 'Class performance summary' })
+  async classPerformance(
+    @Param('classId') classId: string,
+    @Query() query: GroupPerformanceQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.analyticsService.classPerformanceSummary(
+      classId,
+      user.activeSchoolId!,
+      query.academicYearId,
+      query.termId,
+      query.subjectId,
+    );
+  }
+
+  @Get('streams/:streamId/performance')
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('analytics.read')
+  @ApiOperation({ summary: 'Get stream performance summary' })
+  @ApiParam({ name: 'streamId', type: String })
+  @ApiOkResponse({ description: 'Stream performance summary' })
+  async streamPerformance(
+    @Param('streamId') streamId: string,
+    @Query() query: GroupPerformanceQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.analyticsService.streamPerformanceSummary(
+      streamId,
+      user.activeSchoolId!,
+      query.academicYearId,
+      query.termId,
+      query.subjectId,
+    );
+  }
+
+  @Get('subjects/:subjectId/performance')
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('analytics.read')
+  @ApiOperation({ summary: 'Get subject performance summary' })
+  @ApiParam({ name: 'subjectId', type: String })
+  @ApiOkResponse({ description: 'Subject performance summary' })
+  async subjectPerformance(
+    @Param('subjectId') subjectId: string,
+    @Query() query: GroupPerformanceQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.analyticsService.subjectPerformanceSummary(
+      subjectId,
+      user.activeSchoolId!,
+      query.academicYearId,
+      query.termId,
+      query.classId,
+      query.streamId,
+    );
+  }
+
+  @Get('classes/:classId/period-comparison')
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('analytics.read')
+  @ApiOperation({ summary: 'Compare class performance across periods' })
+  @ApiParam({ name: 'classId', type: String })
+  @ApiQuery({ name: 'academicYearId', required: true, type: String })
+  @ApiOkResponse({ description: 'Class period comparison' })
+  async classPeriodComparison(
+    @Param('classId') classId: string,
+    @Query('academicYearId') academicYearId: string,
+    @Query() query: GroupPeriodComparisonQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.analyticsService.classPeriodComparison(
+      classId,
+      user.activeSchoolId!,
+      academicYearId,
+      query.subjectId,
+    );
+  }
+
+  @Get('streams/:streamId/period-comparison')
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('analytics.read')
+  @ApiOperation({ summary: 'Compare stream performance across periods' })
+  @ApiParam({ name: 'streamId', type: String })
+  @ApiQuery({ name: 'academicYearId', required: true, type: String })
+  @ApiOkResponse({ description: 'Stream period comparison' })
+  async streamPeriodComparison(
+    @Param('streamId') streamId: string,
+    @Query('academicYearId') academicYearId: string,
+    @Query() query: GroupPeriodComparisonQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.analyticsService.streamPeriodComparison(
+      streamId,
+      user.activeSchoolId!,
+      academicYearId,
+      query.subjectId,
+    );
+  }
+
+  @Get('subjects/:subjectId/period-comparison')
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('analytics.read')
+  @ApiOperation({ summary: 'Compare subject performance across periods' })
+  @ApiParam({ name: 'subjectId', type: String })
+  @ApiQuery({ name: 'academicYearId', required: true, type: String })
+  @ApiOkResponse({ description: 'Subject period comparison' })
+  async subjectPeriodComparison(
+    @Param('subjectId') subjectId: string,
+    @Query('academicYearId') academicYearId: string,
+    @Query() query: GroupPeriodComparisonQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.analyticsService.subjectPeriodComparison(
+      subjectId,
+      user.activeSchoolId!,
+      academicYearId,
+      query.classId,
+    );
+  }
+
+  @Get('comparisons/classes')
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('analytics.read')
+  @ApiOperation({ summary: 'Compare performance across classes' })
+  @ApiQuery({ name: 'academicYearId', required: true, type: String })
+  @ApiOkResponse({ description: 'Class comparison result' })
+  async compareClasses(
+    @Query('academicYearId') academicYearId: string,
+    @Query() query: ComparisonQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.analyticsService.compareClasses(
+      user.activeSchoolId!,
+      academicYearId,
+      query.academicLevelId,
+      query.termId,
+      query.subjectId,
+    );
+  }
+
+  @Get('comparisons/streams')
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('analytics.read')
+  @ApiOperation({ summary: 'Compare performance across streams within a class' })
+  @ApiQuery({ name: 'academicYearId', required: true, type: String })
+  @ApiQuery({ name: 'classId', required: true, type: String })
+  @ApiOkResponse({ description: 'Stream comparison result' })
+  async compareStreams(
+    @Query('academicYearId') academicYearId: string,
+    @Query('classId') classId: string,
+    @Query() query: ComparisonQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.analyticsService.compareStreams(
+      user.activeSchoolId!,
+      classId,
+      academicYearId,
+      query.termId,
+      query.subjectId,
+    );
+  }
+
+  @Get('comparisons/subjects')
+  @UseGuards(AuthGuard, PermissionGuard)
+  @Permissions('analytics.read')
+  @ApiOperation({ summary: 'Compare performance across subjects within a class' })
+  @ApiQuery({ name: 'academicYearId', required: true, type: String })
+  @ApiQuery({ name: 'classId', required: true, type: String })
+  @ApiOkResponse({ description: 'Subject comparison result' })
+  async compareSubjects(
+    @Query('academicYearId') academicYearId: string,
+    @Query('classId') classId: string,
+    @Query() query: ComparisonQueryDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.analyticsService.compareSubjects(
+      user.activeSchoolId!,
+      classId,
+      academicYearId,
       query.termId,
     );
   }
