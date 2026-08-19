@@ -8,6 +8,8 @@ import { PrismaModule } from './database/prisma.module';
 import { AcademicStructureModule } from './modules/academic-structure/academic-structure.module';
 import { AcademicYearsModule } from './modules/academic-years/academic-years.module';
 import { AcademicOperationsModule } from './modules/academic-operations/academic-operations.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { AssessmentsModule } from './modules/assessments/assessments.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { SchoolsModule } from './modules/schools/schools.module';
 import { StaffModule } from './modules/staff/staff.module';
@@ -32,6 +34,8 @@ import { UsersModule } from './modules/users/users.module';
     SubjectsModule,
     StaffModule,
     AcademicOperationsModule,
+    AssessmentsModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

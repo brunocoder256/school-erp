@@ -2,8 +2,15 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import {
   AdmissionType,
+  AssessmentScoreStatus,
+  AssessmentStatus,
+  AssessmentType,
   EnrollmentStatus,
   Gender,
+  RankingMethod,
+  RankingScope,
+  RankingTieHandling,
+  ResultStatus,
   StudentStatus,
 } from "../generated/prisma/enums";
 
@@ -106,6 +113,41 @@ const permissions = [
   { key: "student_subjects.read", description: "View student subject enrollments" },
   { key: "student_subjects.create", description: "Enroll students in subjects" },
   { key: "student_subjects.update", description: "Update or deactivate student subject enrollments" },
+
+  { key: "assessment_schemes.read", description: "View assessment schemes" },
+  { key: "assessment_schemes.create", description: "Create assessment schemes" },
+  { key: "assessment_schemes.update", description: "Update or archive assessment schemes" },
+
+  { key: "grading_schemes.read", description: "View grading schemes" },
+  { key: "grading_schemes.create", description: "Create grading schemes" },
+  { key: "grading_schemes.update", description: "Update or archive grading schemes" },
+
+  { key: "ranking_policies.read", description: "View ranking policies" },
+  { key: "ranking_policies.create", description: "Create ranking policies" },
+  { key: "ranking_policies.update", description: "Update or deactivate ranking policies" },
+
+  { key: "assessments.read", description: "View assessments" },
+  { key: "assessments.create", description: "Create assessments" },
+  { key: "assessments.update", description: "Update assessments" },
+
+  { key: "assessment_scores.read", description: "View assessment component scores" },
+  { key: "assessment_scores.create", description: "Record assessment component scores" },
+  { key: "assessment_scores.update", description: "Update assessment component scores" },
+
+  { key: "examinations.read", description: "View examinations" },
+  { key: "examinations.create", description: "Create examinations" },
+  { key: "examinations.update", description: "Update examinations" },
+
+  { key: "results.read", description: "View learner results" },
+  { key: "results.create", description: "Generate learner results" },
+  { key: "results.update", description: "Submit learner results" },
+  { key: "results.approve", description: "Approve learner results" },
+  { key: "results.lock", description: "Lock learner results" },
+  { key: "results.amend", description: "Amend finalized learner results" },
+
+  { key: "rankings.read", description: "View learner rankings" },
+
+  { key: "analytics.read", description: "View analytics and performance summaries" },
 ];
 
 const roles = [
@@ -210,6 +252,32 @@ const rolePermissions: Record<string, string[]> = {
     "student_subjects.read",
     "student_subjects.create",
     "student_subjects.update",
+    "assessment_schemes.read",
+    "assessment_schemes.create",
+    "assessment_schemes.update",
+    "grading_schemes.read",
+    "grading_schemes.create",
+    "grading_schemes.update",
+    "ranking_policies.read",
+    "ranking_policies.create",
+    "ranking_policies.update",
+    "assessments.read",
+    "assessments.create",
+    "assessments.update",
+    "assessment_scores.read",
+    "assessment_scores.create",
+    "assessment_scores.update",
+    "examinations.read",
+    "examinations.create",
+    "examinations.update",
+    "results.read",
+    "results.create",
+    "results.update",
+    "results.approve",
+    "results.lock",
+    "results.amend",
+    "rankings.read",
+     "analytics.read",
   ],
 
   TEACHER: [
@@ -231,6 +299,21 @@ const rolePermissions: Record<string, string[]> = {
     "subject_allocations.read",
     "teaching_groups.read",
     "student_subjects.read",
+    "assessment_schemes.read",
+    "grading_schemes.read",
+    "ranking_policies.read",
+    "assessments.read",
+    "assessments.create",
+    "assessments.update",
+    "assessment_scores.read",
+    "assessment_scores.create",
+    "assessment_scores.update",
+    "examinations.read",
+    "results.read",
+    "results.create",
+    "results.update",
+    "rankings.read",
+    "analytics.read",
   ],
 
   STUDENT: [
@@ -246,6 +329,15 @@ const rolePermissions: Record<string, string[]> = {
     "subject_allocations.read",
     "teaching_groups.read",
     "student_subjects.read",
+    "assessment_schemes.read",
+    "grading_schemes.read",
+    "ranking_policies.read",
+    "assessments.read",
+    "assessment_scores.read",
+    "examinations.read",
+    "results.read",
+    "rankings.read",
+    "analytics.read",
   ],
 
   PARENT: [
@@ -261,6 +353,15 @@ const rolePermissions: Record<string, string[]> = {
     "subject_allocations.read",
     "teaching_groups.read",
     "student_subjects.read",
+    "assessment_schemes.read",
+    "grading_schemes.read",
+    "ranking_policies.read",
+    "assessments.read",
+    "assessment_scores.read",
+    "examinations.read",
+    "results.read",
+    "rankings.read",
+    "analytics.read",
   ],
 
   STAFF: [
@@ -278,6 +379,15 @@ const rolePermissions: Record<string, string[]> = {
     "subject_allocations.read",
     "teaching_groups.read",
     "student_subjects.read",
+    "assessment_schemes.read",
+    "grading_schemes.read",
+    "ranking_policies.read",
+    "assessments.read",
+    "assessment_scores.read",
+    "examinations.read",
+    "results.read",
+    "rankings.read",
+    "analytics.read",
   ],
 };
 
@@ -940,6 +1050,303 @@ async function main() {
   }
 
   console.log("Seeded demonstration school staff configuration.");
+
+  console.log("Seeding demonstration school assessment and grading configuration...");
+
+  const term = await prisma.term.upsert({
+    where: {
+      academicYearId_name: { academicYearId: academicYear.id, name: "Term 1" },
+    },
+    update: { isActive: true },
+    create: {
+      academicYearId: academicYear.id,
+      name: "Term 1",
+      startDate: new Date("2026-02-02"),
+      endDate: new Date("2026-05-01"),
+      isActive: true,
+    },
+  });
+
+  const gradingScheme = await prisma.gradingScheme.upsert({
+    where: { schoolId_code: { schoolId: school.id, code: "LSC-ACH" } },
+    update: { name: "Lower Secondary Achievement", isActive: true },
+    create: {
+      schoolId: school.id,
+      code: "LSC-ACH",
+      name: "Lower Secondary Achievement",
+      description: "Representative 80/60/50/40/20 grade bands for the Uganda lower secondary curriculum.",
+      isActive: true,
+    },
+  });
+
+  const gradingSchemeVersion = await prisma.gradingSchemeVersion.upsert({
+    where: {
+      gradingSchemeId_versionNumber: { gradingSchemeId: gradingScheme.id, versionNumber: 1 },
+    },
+    update: { name: "2026 Term 1", status: "ACTIVE" },
+    create: {
+      gradingSchemeId: gradingScheme.id,
+      versionNumber: 1,
+      name: "2026 Term 1",
+      status: "ACTIVE",
+    },
+  });
+
+  const gradingBands = [
+    { grade: "A", minScore: 80, maxScore: 100, descriptor: "Excellent", achievementLevel: "Outstanding", displayOrder: 1 },
+    { grade: "B", minScore: 70, maxScore: 79.99, descriptor: "Very Good", achievementLevel: "Above expectation", displayOrder: 2 },
+    { grade: "C", minScore: 60, maxScore: 69.99, descriptor: "Good", achievementLevel: "Meets expectation", displayOrder: 3 },
+    { grade: "D", minScore: 50, maxScore: 59.99, descriptor: "Satisfactory", achievementLevel: "Partially meets expectation", displayOrder: 4 },
+    { grade: "E", minScore: 20, maxScore: 49.99, descriptor: "Below Satisfactory", achievementLevel: "Below expectation", displayOrder: 5 },
+    { grade: "F", minScore: 0, maxScore: 19.99, descriptor: "Failing", achievementLevel: "Requires intervention", displayOrder: 6 },
+  ];
+
+  for (const band of gradingBands) {
+    const existingBand = await prisma.gradingBand.findFirst({
+      where: { versionId: gradingSchemeVersion.id, grade: band.grade },
+      select: { id: true },
+    });
+
+    if (existingBand) {
+      await prisma.gradingBand.update({
+        where: { id: existingBand.id },
+        data: {
+          minScore: band.minScore,
+          maxScore: band.maxScore,
+          descriptor: band.descriptor,
+          achievementLevel: band.achievementLevel,
+          displayOrder: band.displayOrder,
+        },
+      });
+    } else {
+      await prisma.gradingBand.create({
+        data: {
+          versionId: gradingSchemeVersion.id,
+          ...band,
+        },
+      });
+    }
+  }
+
+  const rankingPolicy = await prisma.rankingPolicy.upsert({
+    where: { schoolId_code: { schoolId: school.id, code: "CLASS-AVG" } },
+    update: {
+      name: "Class Average Ranking",
+      enabled: true,
+      scope: RankingScope.CLASS,
+      method: RankingMethod.AVERAGE_SCORE,
+      tieHandling: RankingTieHandling.COMPETITION,
+      isActive: true,
+    },
+    create: {
+      schoolId: school.id,
+      code: "CLASS-AVG",
+      name: "Class Average Ranking",
+      enabled: true,
+      scope: RankingScope.CLASS,
+      method: RankingMethod.AVERAGE_SCORE,
+      tieHandling: RankingTieHandling.COMPETITION,
+      isActive: true,
+    },
+  });
+
+  const assessmentScheme = await prisma.assessmentScheme.upsert({
+    where: { schoolId_code: { schoolId: school.id, code: "LSC-TERM" } },
+    update: { name: "Lower Secondary Term Assessment", isActive: true },
+    create: {
+      schoolId: school.id,
+      code: "LSC-TERM",
+      name: "Lower Secondary Term Assessment",
+      description: "Representative term assessment scheme: 40% continuous assessment and 60% term end examination.",
+      isActive: true,
+    },
+  });
+
+  const assessmentSchemeVersion = await prisma.assessmentSchemeVersion.upsert({
+    where: {
+      assessmentSchemeId_versionNumber: { assessmentSchemeId: assessmentScheme.id, versionNumber: 1 },
+    },
+    update: { name: "2026 Term 1", status: "ACTIVE" },
+    create: {
+      assessmentSchemeId: assessmentScheme.id,
+      versionNumber: 1,
+      name: "2026 Term 1",
+      status: "ACTIVE",
+      gradingSchemeVersionId: gradingSchemeVersion.id,
+      rankingPolicyId: rankingPolicy.id,
+    },
+  });
+
+  const schemeComponents = [
+    { code: "CA", name: "Continuous Assessment", weight: 40, maxScore: 40, displayOrder: 1 },
+    { code: "EXAM", name: "Term End Examination", weight: 60, maxScore: 100, displayOrder: 2 },
+  ];
+
+  const schemeComponentIds: Record<string, string> = {};
+
+  for (const component of schemeComponents) {
+    const record = await prisma.schemeComponentDefinition.upsert({
+      where: {
+        schemeVersionId_code: { schemeVersionId: assessmentSchemeVersion.id, code: component.code },
+      },
+      update: {
+        name: component.name,
+        weight: component.weight,
+        maxScore: component.maxScore,
+        displayOrder: component.displayOrder,
+      },
+      create: {
+        schemeVersionId: assessmentSchemeVersion.id,
+        ...component,
+      },
+    });
+    schemeComponentIds[component.code] = record.id;
+  }
+
+  console.log("Seeded demonstration school assessment and grading configuration.");
+
+  console.log("Seeding demonstration school assessments and results...");
+
+  const s5MathsGroup = await prisma.teachingGroup.findFirst({
+    where: {
+      schoolId: school.id,
+      academicYearId: academicYear.id,
+      academicClassId: classes["S5"].id,
+      streamId: null,
+      subjectId: subjects["MATH"].id,
+    },
+  });
+
+  if (!s5MathsGroup) {
+    throw new Error("S5 Mathematics teaching group not found for assessment demo data.");
+  }
+
+  const existingAssessment = await prisma.assessment.findFirst({
+    where: {
+      schoolId: school.id,
+      academicYearId: academicYear.id,
+      termId: term.id,
+      subjectId: subjects["MATH"].id,
+      name: "S5 Mathematics Term 1 Examination",
+    },
+    select: { id: true },
+  });
+
+  const demoAssessment = existingAssessment
+    ? await prisma.assessment.update({
+        where: { id: existingAssessment.id },
+        data: {
+          type: AssessmentType.EXAMINATION,
+          status: AssessmentStatus.COMPLETED,
+          date: new Date("2026-04-20"),
+          teachingGroupId: s5MathsGroup.id,
+          schemeVersionId: assessmentSchemeVersion.id,
+        },
+      })
+    : await prisma.assessment.create({
+        data: {
+          schoolId: school.id,
+          academicYearId: academicYear.id,
+          termId: term.id,
+          subjectId: subjects["MATH"].id,
+          academicClassId: classes["S5"].id,
+          teachingGroupId: s5MathsGroup.id,
+          schemeVersionId: assessmentSchemeVersion.id,
+          name: "S5 Mathematics Term 1 Examination",
+          code: "S5-MATH-T1",
+          type: AssessmentType.EXAMINATION,
+          date: new Date("2026-04-20"),
+          status: AssessmentStatus.COMPLETED,
+        },
+      });
+
+  const assessmentComponentIds: Record<string, string> = {};
+
+  for (const component of [
+    { code: "CA", name: "Continuous Assessment", weight: 40, maxScore: 40, schemeComponentDefinitionId: schemeComponentIds["CA"] },
+    { code: "EXAM", name: "Term End Examination", weight: 60, maxScore: 100, schemeComponentDefinitionId: schemeComponentIds["EXAM"] },
+  ]) {
+    const record = await prisma.assessmentComponent.upsert({
+      where: {
+        assessmentId_code: { assessmentId: demoAssessment.id, code: component.code },
+      },
+      update: {
+        name: component.name,
+        weight: component.weight,
+        maxScore: component.maxScore,
+        schemeComponentDefinitionId: component.schemeComponentDefinitionId,
+      },
+      create: {
+        assessmentId: demoAssessment.id,
+        ...component,
+      },
+    });
+    assessmentComponentIds[component.code] = record.id;
+  }
+
+  const demoScoreSeeds = [
+    { componentCode: "CA", score: 32 },
+    { componentCode: "EXAM", score: 78.8 },
+  ];
+
+  for (const seed of demoScoreSeeds) {
+    await prisma.assessmentScore.upsert({
+      where: {
+        componentId_enrollmentId: {
+          componentId: assessmentComponentIds[seed.componentCode],
+          enrollmentId: demoEnrollment.id,
+        },
+      },
+      update: {
+        score: seed.score,
+        status: AssessmentScoreStatus.PRESENT,
+      },
+      create: {
+        assessmentId: demoAssessment.id,
+        componentId: assessmentComponentIds[seed.componentCode],
+        enrollmentId: demoEnrollment.id,
+        score: seed.score,
+        status: AssessmentScoreStatus.PRESENT,
+      },
+    });
+  }
+
+  await prisma.learnerResult.upsert({
+    where: {
+      assessmentId_enrollmentId: {
+        assessmentId: demoAssessment.id,
+        enrollmentId: demoEnrollment.id,
+      },
+    },
+    update: {
+      finalScore: 79.28,
+      grade: "B",
+      descriptor: "Very Good",
+      achievementLevel: "Above expectation",
+      status: ResultStatus.APPROVED,
+      calculatedAt: new Date("2026-04-25"),
+      schemeVersionId: assessmentSchemeVersion.id,
+      gradingSchemeVersionId: gradingSchemeVersion.id,
+    },
+    create: {
+      schoolId: school.id,
+      academicYearId: academicYear.id,
+      termId: term.id,
+      assessmentId: demoAssessment.id,
+      enrollmentId: demoEnrollment.id,
+      subjectId: subjects["MATH"].id,
+      finalScore: 79.28,
+      grade: "B",
+      descriptor: "Very Good",
+      achievementLevel: "Above expectation",
+      status: ResultStatus.APPROVED,
+      calculatedAt: new Date("2026-04-25"),
+      schemeVersionId: assessmentSchemeVersion.id,
+      gradingSchemeVersionId: gradingSchemeVersion.id,
+    },
+  });
+
+  console.log("Seeded demonstration school assessments and results.");
 
   console.log("Seeded demonstration school academic structure.");
   console.log("Seed completed successfully.");

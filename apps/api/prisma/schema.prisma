@@ -104,6 +104,13 @@ model School {
   teachingAssignments      TeachingAssignment[]
   subjectAllocations       SubjectAllocation[]
   teachingGroups           TeachingGroup[]
+
+  assessmentSchemes AssessmentScheme[]
+  gradingSchemes    GradingScheme[]
+  rankingPolicies   RankingPolicy[]
+  assessments       Assessment[]
+  learnerResults    LearnerResult[]
+  examinations      Examination[]
 }
 
 model AcademicYear {
@@ -129,6 +136,10 @@ model AcademicYear {
   subjectAllocations SubjectAllocation[]
   teachingGroups     TeachingGroup[]
 
+  assessments    Assessment[]
+  learnerResults LearnerResult[]
+  examinations  Examination[]
+
   @@unique([schoolId, name])
 }
 
@@ -143,6 +154,10 @@ model Term {
 
   academicYearId String
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  assessments    Assessment[]
+  learnerResults LearnerResult[]
+  examinations  Examination[]
 
   @@unique([academicYearId, name])
 }
@@ -284,6 +299,8 @@ model AcademicClass {
   subjectAllocations SubjectAllocation[]
   teachingGroups     TeachingGroup[]
 
+  assessments Assessment[]
+
   @@unique([schoolId, code])
   @@index([schoolId])
   @@index([academicLevelId])
@@ -308,6 +325,8 @@ model Stream {
 
   subjectAllocations SubjectAllocation[]
   teachingGroups     TeachingGroup[]
+
+  assessments Assessment[]
 
   @@unique([classId, code])
   @@index([classId])
@@ -345,6 +364,9 @@ model Enrollment {
   subjectCombination   SubjectCombination? @relation(fields: [subjectCombinationId], references: [id], onDelete: SetNull)
 
   subjectEnrollments StudentSubjectEnrollment[]
+
+  assessmentScores AssessmentScore[]
+  learnerResults   LearnerResult[]
 
   @@unique([studentId, academicYearId])
   @@index([studentId])
@@ -523,6 +545,9 @@ model Subject {
   teachingAssignments     TeachingAssignment[]
   studentSubjectEnrollments StudentSubjectEnrollment[]
   teachingGroups            TeachingGroup[]
+
+  assessments   Assessment[]
+  learnerResults LearnerResult[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -881,6 +906,8 @@ model TeachingGroup {
 
   teachingAssignments TeachingAssignment[]
 
+  assessments Assessment[]
+
   @@unique([schoolId, academicYearId, academicClassId, streamId, subjectId])
   @@index([schoolId])
   @@index([academicYearId])
@@ -907,4 +934,472 @@ model StudentSubjectEnrollment {
 
   @@unique([enrollmentId, subjectId])
   @@index([subjectId])
+}
+
+enum AssessmentType {
+  FORMATIVE
+  SUMMATIVE
+  CONTINUOUS_ASSESSMENT
+  EXAMINATION
+  PROJECT
+  PRACTICAL
+  PERFORMANCE
+  COURSEWORK
+  OBSERVATION
+  COMPETENCY
+  OTHER
+}
+
+enum AssessmentStatus {
+  DRAFT
+  COMPLETED
+}
+
+enum AssessmentScoreStatus {
+  PRESENT
+  ABSENT
+  EXEMPT
+  NOT_ASSESSED
+  PENDING
+  WITHHELD
+}
+
+enum ResultStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  LOCKED
+  AMENDED
+}
+
+enum SchemeVersionStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum GradingSchemeVersionStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum RankingScope {
+  CLASS
+  STREAM
+  ACADEMIC_LEVEL
+  SCHOOL
+}
+
+enum RankingMethod {
+  TOTAL_SCORE
+  AVERAGE_SCORE
+  AGGREGATE
+}
+
+enum RankingTieHandling {
+  COMPETITION
+  DENSE
+}
+
+enum ExaminationStatus {
+  DRAFT
+  COMPLETED
+  LOCKED
+}
+
+enum ExaminationPaperStatus {
+  DRAFT
+  COMPLETED
+}
+
+/**
+ * Configurable assessment scheme (e.g. Lower Secondary CBC, Term Assessment).
+ * Schemes are school-scoped configuration; they are never hard-coded in
+ * business logic. Rules live in immutable versions so finalized results keep
+ * the configuration that produced them.
+ */
+model AssessmentScheme {
+  id          String   @id @default(uuid())
+  name        String
+  code        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  versions AssessmentSchemeVersion[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model AssessmentSchemeVersion {
+  id            String               @id @default(uuid())
+  versionNumber Int
+  name          String?
+  status        SchemeVersionStatus  @default(DRAFT)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  assessmentSchemeId String
+  assessmentScheme   AssessmentScheme @relation(fields: [assessmentSchemeId], references: [id], onDelete: Cascade)
+
+  gradingSchemeVersionId String?
+  gradingSchemeVersion   GradingSchemeVersion? @relation(fields: [gradingSchemeVersionId], references: [id], onDelete: SetNull)
+
+  rankingPolicyId String?
+  rankingPolicy   RankingPolicy? @relation(fields: [rankingPolicyId], references: [id], onDelete: SetNull)
+
+  components  SchemeComponentDefinition[]
+  assessments Assessment[]
+  results     LearnerResult[]
+
+  @@unique([assessmentSchemeId, versionNumber])
+  @@index([assessmentSchemeId])
+  @@index([gradingSchemeVersionId])
+  @@index([rankingPolicyId])
+}
+
+/**
+ * The canonical weighted components of a scheme version. Weight is expressed
+ * as an integer percentage; scheme weights must sum to 100.
+ */
+model SchemeComponentDefinition {
+  id           String   @id @default(uuid())
+  name         String
+  code         String?
+  displayOrder Int      @default(0)
+  weight       Int
+  maxScore     Decimal  @db.Decimal(6, 2)
+  createdAt    DateTime @default(now())
+
+  schemeVersionId String
+  schemeVersion   AssessmentSchemeVersion @relation(fields: [schemeVersionId], references: [id], onDelete: Cascade)
+
+  assessmentComponents AssessmentComponent[]
+
+  @@unique([schemeVersionId, code])
+  @@index([schemeVersionId])
+}
+
+model GradingScheme {
+  id          String   @id @default(uuid())
+  name        String
+  code        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  versions GradingSchemeVersion[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model GradingSchemeVersion {
+  id            String                      @id @default(uuid())
+  versionNumber Int
+  name          String?
+  status        GradingSchemeVersionStatus  @default(DRAFT)
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+
+  gradingSchemeId String
+  gradingScheme   GradingScheme @relation(fields: [gradingSchemeId], references: [id], onDelete: Cascade)
+
+  bands          GradingBand[]
+  usedByVersions AssessmentSchemeVersion[]
+  results        LearnerResult[]
+
+  @@unique([gradingSchemeId, versionNumber])
+  @@index([gradingSchemeId])
+}
+
+/**
+ * A score range mapped to a grade, descriptor and achievement level. Bands
+ * are inclusive on both ends; overlaps are rejected by the application layer.
+ */
+model GradingBand {
+  id               String   @id @default(uuid())
+  minScore         Decimal  @db.Decimal(6, 2)
+  maxScore         Decimal  @db.Decimal(6, 2)
+  grade            String
+  descriptor       String?
+  achievementLevel String?
+  displayOrder     Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  versionId String
+  version   GradingSchemeVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+}
+
+model RankingPolicy {
+  id          String            @id @default(uuid())
+  name        String
+  code        String
+  enabled     Boolean           @default(true)
+  scope       RankingScope
+  method      RankingMethod     @default(AVERAGE_SCORE)
+  tieHandling RankingTieHandling @default(COMPETITION)
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  usedByVersions AssessmentSchemeVersion[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+/**
+ * An actual assessment activity/event anchored to the M10 academic context
+ * (school, year, term, subject, class, stream, optional teaching group). The
+ * scheme version defines how the assessment's component scores are weighted.
+ */
+model Assessment {
+  id        String          @id @default(uuid())
+  name      String
+  code      String?
+  type      AssessmentType
+  date      DateTime?
+  status    AssessmentStatus @default(DRAFT)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  termId String?
+  term   Term? @relation(fields: [termId], references: [id], onDelete: Restrict)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  academicClassId String
+  academicClass   AcademicClass @relation(fields: [academicClassId], references: [id], onDelete: Restrict)
+
+  streamId String?
+  stream   Stream? @relation(fields: [streamId], references: [id], onDelete: Restrict)
+
+  teachingGroupId String?
+  teachingGroup   TeachingGroup? @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+
+  schemeVersionId String?
+  schemeVersion   AssessmentSchemeVersion? @relation(fields: [schemeVersionId], references: [id], onDelete: SetNull)
+
+  components          AssessmentComponent[] @relation("AssessmentComponents")
+  sourceOfComponents  AssessmentComponent[] @relation("AssessmentSourceComponents")
+  scores              AssessmentScore[]
+  results             LearnerResult[]
+  papers              ExaminationPaper[]
+
+  @@index([schoolId])
+  @@index([academicYearId])
+  @@index([termId])
+  @@index([academicClassId])
+  @@index([streamId])
+  @@index([teachingGroupId])
+  @@index([subjectId])
+  @@index([schemeVersionId])
+}
+
+/**
+ * A scored part of an assessment. Every assessment has at least one component
+ * (a default "Total" component is created when no parts are supplied) so
+ * scores always attach to a component. An optional source assessment lets a
+ * continuous-assessment component derive its score from another assessment's
+ * finalized result.
+ */
+model AssessmentComponent {
+  id           String    @id @default(uuid())
+  name         String
+  code         String?
+  displayOrder Int       @default(0)
+  weight       Int?
+  maxScore     Decimal   @db.Decimal(6, 2)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assessmentId String
+  assessment   Assessment @relation("AssessmentComponents", fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  schemeComponentDefinitionId String?
+  schemeComponentDefinition   SchemeComponentDefinition? @relation(fields: [schemeComponentDefinitionId], references: [id], onDelete: SetNull)
+
+  sourceAssessmentId String?
+  sourceAssessment   Assessment? @relation("AssessmentSourceComponents", fields: [sourceAssessmentId], references: [id], onDelete: SetNull)
+
+  scores AssessmentScore[]
+
+  @@unique([assessmentId, code])
+  @@index([assessmentId])
+  @@index([schemeComponentDefinitionId])
+  @@index([sourceAssessmentId])
+}
+
+/**
+ * A learner's score on an assessment component. Absent is not zero: an absent
+ * learner has no score and is excluded from the calculation unless a policy
+ * says otherwise.
+ */
+model AssessmentScore {
+  id           String              @id @default(uuid())
+  score        Decimal?            @db.Decimal(6, 2)
+  status       AssessmentScoreStatus @default(PRESENT)
+  comment      String?
+  recordedById String?             @db.Uuid
+  recordedAt   DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  componentId String
+  component   AssessmentComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@unique([componentId, enrollmentId])
+  @@index([assessmentId])
+  @@index([enrollmentId])
+}
+
+/**
+ * The stable, explainable outcome of an assessment for a learner: the final
+ * score, grade, descriptor and achievement level plus the scheme and grading
+ * versions used to produce them. Results move through a controlled lifecycle
+ * and finalized results are never silently overwritten.
+ */
+model LearnerResult {
+  id                String       @id @default(uuid())
+  finalScore        Decimal?     @db.Decimal(6, 2)
+  grade             String?
+  descriptor        String?
+  achievementLevel  String?
+  status            ResultStatus @default(DRAFT)
+  calculatedAt      DateTime?
+  amendedAt         DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  termId String?
+  term   Term? @relation(fields: [termId], references: [id], onDelete: Restrict)
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  schemeVersionId String?
+  schemeVersion   AssessmentSchemeVersion? @relation(fields: [schemeVersionId], references: [id], onDelete: SetNull)
+
+  gradingSchemeVersionId String?
+  gradingSchemeVersion   GradingSchemeVersion? @relation(fields: [gradingSchemeVersionId], references: [id], onDelete: SetNull)
+
+  amendments ResultAmendment[]
+
+  @@unique([assessmentId, enrollmentId])
+  @@index([schoolId])
+  @@index([academicYearId])
+  @@index([assessmentId])
+  @@index([enrollmentId])
+  @@index([subjectId])
+  @@index([status])
+}
+
+/**
+ * A controlled correction of a finalized result. History is preserved: the
+ * previous and new values, the actor, the reason and the timestamp are kept.
+ */
+model ResultAmendment {
+  id                 String   @id @default(uuid())
+  previousFinalScore Decimal? @db.Decimal(6, 2)
+  previousGrade      String?
+  previousDescriptor String?
+  newFinalScore      Decimal? @db.Decimal(6, 2)
+  newGrade           String?
+  newDescriptor      String?
+  reason             String
+  amendedById        String?  @db.Uuid
+  amendedAt          DateTime @default(now())
+
+  resultId String
+  result   LearnerResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+
+  @@index([resultId])
+}
+
+model Examination {
+  id            String            @id @default(uuid())
+  name          String
+  code          String?
+  date          DateTime?
+  status        ExaminationStatus @default(DRAFT)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  termId String?
+  term   Term? @relation(fields: [termId], references: [id], onDelete: Restrict)
+
+  papers ExaminationPaper[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@index([academicYearId])
+}
+
+/**
+ * A single paper of an examination. Scoring happens through the linked
+ * assessment (one shared score/result path), so a paper carries its subject
+ * and academic context via the assessment.
+ */
+model ExaminationPaper {
+  id           String               @id @default(uuid())
+  name         String
+  code         String?
+  displayOrder Int                  @default(0)
+  status       ExaminationPaperStatus @default(DRAFT)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  examinationId String
+  examination   Examination @relation(fields: [examinationId], references: [id], onDelete: Cascade)
+
+  assessmentId String @unique
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+
+  @@index([examinationId])
 }
