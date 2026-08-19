@@ -106,6 +106,17 @@ const permissions = [
   { key: "student_subjects.read", description: "View student subject enrollments" },
   { key: "student_subjects.create", description: "Enroll students in subjects" },
   { key: "student_subjects.update", description: "Update or deactivate student subject enrollments" },
+
+  { key: "report_cards.read", description: "View report cards" },
+  { key: "report_cards.create", description: "Create report cards" },
+  { key: "report_cards.update", description: "Update report cards" },
+  { key: "report_cards.approve", description: "Approve report cards" },
+
+  { key: "transcripts.read", description: "View student transcripts" },
+
+  { key: "student_progressions.read", description: "View student progression decisions" },
+  { key: "student_progressions.create", description: "Create student progression decisions" },
+  { key: "student_progressions.update", description: "Update student progression decisions" },
 ];
 
 const roles = [
@@ -210,6 +221,14 @@ const rolePermissions: Record<string, string[]> = {
     "student_subjects.read",
     "student_subjects.create",
     "student_subjects.update",
+    "report_cards.read",
+    "report_cards.create",
+    "report_cards.update",
+    "report_cards.approve",
+    "transcripts.read",
+    "student_progressions.read",
+    "student_progressions.create",
+    "student_progressions.update",
   ],
 
   TEACHER: [
