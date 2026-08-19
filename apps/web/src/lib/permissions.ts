@@ -12,3 +12,17 @@ export function hasPermission(
 ): boolean {
   return userPermissions.includes(permission) || userPermissions.includes("*");
 }
+
+export function hasAnyPermission(
+  permissions: Array<PermissionName | string>,
+  userPermissions: Array<PermissionName | string> = [],
+): boolean {
+  return permissions.some((permission) => hasPermission(permission, userPermissions));
+}
+
+export function hasAllPermissions(
+  permissions: Array<PermissionName | string>,
+  userPermissions: Array<PermissionName | string> = [],
+): boolean {
+  return permissions.every((permission) => hasPermission(permission, userPermissions));
+}

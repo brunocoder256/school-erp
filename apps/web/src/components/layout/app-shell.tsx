@@ -1,13 +1,16 @@
+"use client";
+
 import type { ReactNode } from "react";
 
+import { useAuth } from "@/components/auth/auth-provider";
+import { Button } from "@/components/ui/button";
 import { appConfig } from "@/config/app";
 
 const navItems = [
-  { label: "Overview", active: true },
-  { label: "Foundation" },
-  { label: "Design system" },
-  { label: "API client" },
-  { label: "Permissions" },
+  { label: "Overview", route: "/", requiredPermission: ["dashboard.view"] },
+  { label: "Students", route: "/students", requiredPermission: ["students.read"] },
+  { label: "Academics", route: "/academics", requiredPermission: ["academics.read"] },
+  { label: "Settings", route: "/settings", requiredPermission: ["settings.manage"] },
 ];
 
 interface AppShellProps {
@@ -23,6 +26,14 @@ export function AppShell({
   description = "Build future ERP modules on a consistent, mobile-friendly foundation.",
   actions,
 }: AppShellProps) {
+  const { activeSchool, hasAllPermissions, logout, user } = useAuth();
+
+  const visibleNavItems = navItems.filter(
+    (item) =>
+      item.requiredPermission.length === 0 ||
+      hasAllPermissions(item.requiredPermission),
+  );
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col lg:flex-row">
@@ -33,21 +44,16 @@ export function AppShell({
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">{appConfig.appName}</p>
-              <p className="text-xs text-muted-foreground">Frontend foundation</p>
+              <p className="text-xs text-muted-foreground">School ERP</p>
             </div>
           </div>
 
           <nav className="flex-1 space-y-2 p-4">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <button
                 key={item.label}
                 type="button"
-                className={[
-                  "flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                  item.active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                ].join(" ")}
+                className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 {item.label}
               </button>
@@ -62,16 +68,19 @@ export function AppShell({
                 S
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">School dashboard</p>
+                <p className="text-sm font-medium text-muted-foreground">Active school</p>
+                <p className="text-sm font-semibold text-foreground">
+                  {activeSchool?.name ?? "No school selected"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
-              >
-                Switch school
-              </button>
+              <div className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground">
+                {user?.fullName ?? "User"}
+              </div>
+              <Button type="button" variant="secondary" size="sm" onClick={() => void logout()}>
+                Log out
+              </Button>
             </div>
           </header>
 
