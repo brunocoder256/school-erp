@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import Home from "@/app/page";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
+
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
     status: "authenticated",

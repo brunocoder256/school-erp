@@ -3,6 +3,7 @@
 import { useAuth } from "@/components/auth/auth-provider";
 import { SchoolSelectionCard } from "@/components/auth/school-selector";
 import { ProtectedRoute } from "@/components/auth/protected-route";
+import { PersonaWorkspace } from "@/components/personas/persona-workspace";
 import { Alert } from "@/components/feedback/alert";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +93,8 @@ export default function Home() {
               description="The frontend keeps authentication, school context, and permission checks centralized so future ERP modules inherit the same security boundary as the NestJS API."
               variant="default"
             />
+
+            <PersonaWorkspace />
           </div>
         </AppShell>
       )}

@@ -19,7 +19,7 @@ import {
   resolvePersonaProfile,
   resolvePrimaryPersona,
   resolveAllPersonas,
-  type PersonaType,
+  type Persona,
   type PersonaProfile,
 } from "../persona-resolver";
 import { getPersonaWorkspace, getVisibleSections } from "../workspace-definitions";
@@ -34,10 +34,10 @@ export interface UsePersonaResult {
   capabilities: Capabilities;
 
   /** User's primary persona (e.g., TEACHER, ADMINISTRATOR) */
-  primaryPersona: PersonaType;
+  primaryPersona: Persona;
 
   /** All personas the user has (handles multiple responsibilities) */
-  allPersonas: PersonaType[];
+  allPersonas: Persona[];
 
   /** Full persona profile with metadata */
   profile: PersonaProfile;
@@ -55,7 +55,7 @@ export interface UsePersonaResult {
   getQuickActions: (actionIds: string[]) => QuickAction[];
 
   /** Get workspace layout for a specific persona */
-  getWorkspace: (persona: PersonaType) =>
+  getWorkspace: (persona: Persona) =>
     | ReturnType<typeof getPersonaWorkspace>
     | null;
 
@@ -88,7 +88,8 @@ export interface UsePersonaResult {
  * ```
  */
 export function usePersona(): UsePersonaResult {
-  const { user, isLoading } = useAuth();
+  const { user, status } = useAuth();
+  const isLoading = status === "loading";
 
   const capabilities = useMemo(() => {
     if (!user?.permissionKeys) {
@@ -125,7 +126,7 @@ export function usePersona(): UsePersonaResult {
     return getAvailableQuickActions(actionIds, capabilities);
   };
 
-  const memoGetWorkspace = (persona: PersonaType) => {
+  const memoGetWorkspace = (persona: Persona) => {
     try {
       return getPersonaWorkspace(persona, capabilities);
     } catch {
