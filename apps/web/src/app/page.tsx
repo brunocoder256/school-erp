@@ -1,156 +1,100 @@
+"use client";
+
+import { useAuth } from "@/components/auth/auth-provider";
+import { SchoolSelectionCard } from "@/components/auth/school-selector";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 import { Alert } from "@/components/feedback/alert";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { hasPermission } from "@/lib/permissions";
-
-const foundationAreas = [
-  "Responsive shell",
-  "Design tokens",
-  "Reusable UI primitives",
-  "API client foundation",
-  "Permission-aware UI",
-];
-
-const permissionSet = [
-  "dashboard.view",
-  "students.read",
-  "academics.read",
-  "settings.manage",
-];
 
 export default function Home() {
-  return (
-    <AppShell
-      title="Frontend foundation"
-      description="A clean, mobile-first shell for the School ERP product. Future feature modules can build on top of this without repeating layout, styling or API conventions."
-      actions={
-        <>
-          <Button variant="secondary">Preview</Button>
-          <Button>Apply foundation</Button>
-        </>
-      }
-    >
-      <div className="space-y-6">
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardHeader>
-              <p className="text-sm font-medium text-muted-foreground">Layout</p>
-              <p className="text-2xl font-semibold text-foreground">Desktop + mobile</p>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                The shell adapts from desktop sidebar patterns to compact mobile navigation.
-              </p>
-            </CardContent>
-          </Card>
+  const { status, user, activeSchool, requiresSchoolSelection } = useAuth();
 
-          <Card>
-            <CardHeader>
-              <p className="text-sm font-medium text-muted-foreground">Design system</p>
-              <p className="text-2xl font-semibold text-foreground">Tokenized</p>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {foundationAreas.slice(0, 3).map((item) => (
-                  <Badge key={item} variant="default">
-                    {item}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <p className="text-sm font-medium text-muted-foreground">API readiness</p>
-              <p className="text-2xl font-semibold text-foreground">Typed client</p>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Requests are centralized with a typed fetch foundation and environment-based config.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <p className="text-sm font-medium text-muted-foreground">Permissions</p>
-              <p className="text-2xl font-semibold text-foreground">UX-aware</p>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {hasPermission("students.read", permissionSet) ? "Access ready" : "Access restricted"}
-              </p>
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Core primitives</p>
-                  <h2 className="text-xl font-semibold text-foreground">Composable UI</h2>
-                </div>
-                <Badge variant="success">Ready</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-3">
-                <Button size="sm">Primary action</Button>
-                <Button variant="secondary" size="sm">
-                  Secondary action
-                </Button>
-                <Button variant="ghost" size="sm">
-                  Ghost action
-                </Button>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label htmlFor="school-search" className="text-sm font-medium text-foreground">
-                    School search
-                  </label>
-                  <Input id="school-search" placeholder="Search school or class" />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="term" className="text-sm font-medium text-foreground">
-                    Current term
-                  </label>
-                  <Input id="term" defaultValue="Term 1" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <p className="text-sm font-medium text-muted-foreground">Permission foundation</p>
-              <h2 className="text-xl font-semibold text-foreground">Access model</h2>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {permissionSet.map((permission) => (
-                <div key={permission} className="flex items-center justify-between gap-4 rounded-lg bg-muted/40 px-3 py-2">
-                  <span className="text-sm text-foreground">{permission}</span>
-                  <Badge variant={hasPermission(permission, permissionSet) ? "success" : "warning"}>
-                    {hasPermission(permission, permissionSet) ? "Allowed" : "Blocked"}
-                  </Badge>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
-
-        <Alert
-          title="Foundation milestone only"
-          description="This page intentionally avoids feature-specific ERP screens. It sets up the shell, tokens, UI system, and client readiness required for future modules."
-          variant="default"
-        />
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Resolving your session…
       </div>
-    </AppShell>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return null;
+  }
+
+  return (
+    <ProtectedRoute>
+      {requiresSchoolSelection ? (
+        <main className="flex min-h-screen items-center justify-center bg-background p-4">
+          <SchoolSelectionCard />
+        </main>
+      ) : (
+        <AppShell
+          title="School dashboard"
+          description={`Welcome back, ${user?.fullName ?? "user"}. Active school: ${activeSchool?.name ?? "Unassigned"}.`}
+        >
+          <div className="space-y-6">
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Card>
+                <CardHeader>
+                  <p className="text-sm font-medium text-muted-foreground">School</p>
+                  <p className="text-2xl font-semibold text-foreground">{activeSchool?.name ?? "No school"}</p>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Active school context is resolved from the backend membership state.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <p className="text-sm font-medium text-muted-foreground">Current user</p>
+                  <p className="text-2xl font-semibold text-foreground">{user?.fullName ?? "Unknown user"}</p>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{user?.email ?? "No email available"}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <p className="text-sm font-medium text-muted-foreground">Permissions</p>
+                  <p className="text-2xl font-semibold text-foreground">{user?.permissionKeys.length ?? 0}</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {(user?.permissionKeys ?? []).slice(0, 3).map((permission) => (
+                      <Badge key={permission} variant="default">
+                        {permission}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <p className="text-sm font-medium text-muted-foreground">Session</p>
+                  <p className="text-2xl font-semibold text-foreground">Authenticated</p>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Backend-issued JWT is validated and bound to the active school context.
+                  </p>
+                </CardContent>
+              </Card>
+            </section>
+
+            <Alert
+              title="Authentication foundation"
+              description="The frontend keeps authentication, school context, and permission checks centralized so future ERP modules inherit the same security boundary as the NestJS API."
+              variant="default"
+            />
+          </div>
+        </AppShell>
+      )}
+    </ProtectedRoute>
   );
 }
