@@ -114,6 +114,7 @@ const permissions = [
   { key: "student_subjects.create", description: "Enroll students in subjects" },
   { key: "student_subjects.update", description: "Update or deactivate student subject enrollments" },
 
+<<<<<<< HEAD
   { key: "assessment_schemes.read", description: "View assessment schemes" },
   { key: "assessment_schemes.create", description: "Create assessment schemes" },
   { key: "assessment_schemes.update", description: "Update or archive assessment schemes" },
@@ -158,6 +159,18 @@ const permissions = [
   { key: "report_templates.create", description: "Create report-card templates and versions" },
   { key: "report_templates.update", description: "Update report-card templates" },
   { key: "report_comments.create", description: "Add teacher, class-teacher or head-teacher comments to report cards" },
+=======
+  { key: "report_cards.read", description: "View report cards" },
+  { key: "report_cards.create", description: "Create report cards" },
+  { key: "report_cards.update", description: "Update report cards" },
+  { key: "report_cards.approve", description: "Approve report cards" },
+
+  { key: "transcripts.read", description: "View student transcripts" },
+
+  { key: "student_progressions.read", description: "View student progression decisions" },
+  { key: "student_progressions.create", description: "Create student progression decisions" },
+  { key: "student_progressions.update", description: "Update student progression decisions" },
+>>>>>>> origin/agents/repository-overview-exploration
 ];
 
 const roles = [
@@ -262,6 +275,7 @@ const rolePermissions: Record<string, string[]> = {
     "student_subjects.read",
     "student_subjects.create",
     "student_subjects.update",
+<<<<<<< HEAD
     "assessment_schemes.read",
     "assessment_schemes.create",
     "assessment_schemes.update",
@@ -297,6 +311,16 @@ const rolePermissions: Record<string, string[]> = {
     "report_templates.create",
     "report_templates.update",
     "report_comments.create",
+=======
+    "report_cards.read",
+    "report_cards.create",
+    "report_cards.update",
+    "report_cards.approve",
+    "transcripts.read",
+    "student_progressions.read",
+    "student_progressions.create",
+    "student_progressions.update",
+>>>>>>> origin/agents/repository-overview-exploration
   ],
 
   TEACHER: [

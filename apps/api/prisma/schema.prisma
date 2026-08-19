@@ -48,6 +48,21 @@ enum EnrollmentStatus {
   REPEATING
 }
 
+enum ReportCardStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REVISED
+}
+
+enum ProgressionDecision {
+  PROMOTE
+  REPEAT
+  TRANSFER
+  COMPLETE
+  HOLD
+}
+
 enum AdmissionType {
   NEW
   TRANSFER
@@ -93,6 +108,8 @@ model School {
   academicOrganizations    AcademicOrganization[]
   academicLevels           AcademicLevel[]
   academicLevelProgressions AcademicLevelProgression[]
+  reportCards              ReportCard[]
+  studentProgressions      StudentAcademicProgression[]
   subjectCategories        SubjectCategory[]
   subjects                 Subject[]
   subjectOfferings         SubjectOffering[]
@@ -129,6 +146,8 @@ model AcademicYear {
 
   terms       Term[]
   enrollments Enrollment[]
+  reportCards ReportCard[]
+  studentProgressions StudentAcademicProgression[]
 
   subjectOfferings SubjectOffering[]
 
@@ -275,6 +294,10 @@ model Student {
   enrollments      Enrollment[]
   studentGuardians StudentGuardian[]
   reportCards      ReportCard[]
+<<<<<<< HEAD
+=======
+  studentProgressions StudentAcademicProgression[]
+>>>>>>> origin/agents/repository-overview-exploration
 
   @@unique([schoolId, admissionNumber])
   @@index([schoolId])
@@ -297,6 +320,7 @@ model AcademicClass {
 
   streams     Stream[]
   enrollments Enrollment[]
+  reportCards ReportCard[]
 
   responsibilities    StaffResponsibility[]
   teachingAssignments TeachingAssignment[]
@@ -325,6 +349,7 @@ model Stream {
   class   AcademicClass @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   enrollments Enrollment[]
+  reportCards ReportCard[]
 
   responsibilities    StaffResponsibility[]
   teachingAssignments TeachingAssignment[]
@@ -371,6 +396,8 @@ model Enrollment {
   subjectCombination   SubjectCombination? @relation(fields: [subjectCombinationId], references: [id], onDelete: SetNull)
 
   subjectEnrollments StudentSubjectEnrollment[]
+  reportCards        ReportCard[]
+  studentProgressions StudentAcademicProgression[]
 
   assessmentScores AssessmentScore[]
   learnerResults   LearnerResult[]
@@ -482,6 +509,8 @@ model AcademicLevel {
   classes        AcademicClass[]
   fromProgressions AcademicLevelProgression[] @relation("LevelProgressionFrom")
   toProgressions   AcademicLevelProgression[] @relation("LevelProgressionTo")
+  fromStudentProgressions StudentAcademicProgression[] @relation("ProgressionStartLevel")
+  toStudentProgressions StudentAcademicProgression[] @relation("ProgressionTargetLevel")
   subjectOfferings SubjectOffering[]
   subjectCombinations SubjectCombination[]
   reportCards   ReportCard[]
@@ -555,6 +584,7 @@ model Subject {
   teachingAssignments     TeachingAssignment[]
   studentSubjectEnrollments StudentSubjectEnrollment[]
   teachingGroups            TeachingGroup[]
+  reportCardLines          ReportCardLine[]
 
   assessments   Assessment[]
   learnerResults LearnerResult[]
@@ -946,6 +976,7 @@ model StudentSubjectEnrollment {
   @@index([subjectId])
 }
 
+<<<<<<< HEAD
 enum AssessmentType {
   FORMATIVE
   SUMMATIVE
@@ -1513,6 +1544,19 @@ model ReportCard {
   amendmentReason String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+=======
+model ReportCard {
+  id            String          @id @default(uuid())
+  averageScore  Float?
+  overallGrade  String?
+  status        ReportCardStatus @default(DRAFT)
+  remarks       String?
+  generatedAt   DateTime        @default(now())
+  submittedAt   DateTime?
+  approvedAt    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+>>>>>>> origin/agents/repository-overview-exploration
 
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -1520,6 +1564,7 @@ model ReportCard {
   studentId String
   student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
+<<<<<<< HEAD
   academicYearId String
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
 
@@ -1580,10 +1625,42 @@ model ReportCardSubjectEntry {
   resultStatus     String
   learnerResultId  String?
   createdAt        DateTime @default(now())
+=======
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  academicClassId String?
+  academicClass   AcademicClass? @relation(fields: [academicClassId], references: [id], onDelete: SetNull)
+
+  streamId String?
+  stream   Stream? @relation(fields: [streamId], references: [id], onDelete: SetNull)
+
+  lines     ReportCardLine[]
+  progression StudentAcademicProgression?
+
+  @@unique([schoolId, enrollmentId, academicYearId])
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([academicYearId])
+}
+
+model ReportCardLine {
+  id            String   @id @default(uuid())
+  score         Float?
+  grade         String?
+  isPassed      Boolean  @default(true)
+  teacherComment String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+>>>>>>> origin/agents/repository-overview-exploration
 
   reportCardId String
   reportCard   ReportCard @relation(fields: [reportCardId], references: [id], onDelete: Cascade)
 
+<<<<<<< HEAD
   @@index([reportCardId])
   @@index([subjectId])
 }
@@ -1625,4 +1702,45 @@ model ReportCardAmendment {
   reportCard   ReportCard @relation(fields: [reportCardId], references: [id], onDelete: Cascade)
 
   @@index([reportCardId])
+=======
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@unique([reportCardId, subjectId])
+  @@index([subjectId])
+}
+
+model StudentAcademicProgression {
+  id            String              @id @default(uuid())
+  decision      ProgressionDecision @default(HOLD)
+  recommendation String?
+  effectiveDate DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  reportCardId String? @unique
+  reportCard   ReportCard? @relation(fields: [reportCardId], references: [id], onDelete: SetNull)
+
+  fromAcademicLevelId String?
+  fromAcademicLevel   AcademicLevel? @relation("ProgressionStartLevel", fields: [fromAcademicLevelId], references: [id], onDelete: SetNull)
+
+  toAcademicLevelId String?
+  toAcademicLevel   AcademicLevel? @relation("ProgressionTargetLevel", fields: [toAcademicLevelId], references: [id], onDelete: SetNull)
+
+  @@unique([schoolId, studentId, enrollmentId, academicYearId])
+  @@index([schoolId])
+  @@index([studentId])
+>>>>>>> origin/agents/repository-overview-exploration
 }
