@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { validate } from './config/env.validation';
 import { PrismaModule } from './database/prisma.module';
+import { AcademicRecordsModule } from './modules/academic-records/academic-records.module';
 import { AcademicStructureModule } from './modules/academic-structure/academic-structure.module';
 import { AcademicYearsModule } from './modules/academic-years/academic-years.module';
 import { AcademicOperationsModule } from './modules/academic-operations/academic-operations.module';
@@ -36,6 +37,7 @@ import { UsersModule } from './modules/users/users.module';
     AcademicOperationsModule,
     AssessmentsModule,
     AnalyticsModule,
+    AcademicRecordsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

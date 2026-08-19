@@ -148,6 +148,16 @@ const permissions = [
   { key: "rankings.read", description: "View learner rankings" },
 
   { key: "analytics.read", description: "View analytics and performance summaries" },
+
+  { key: "reports.read", description: "View report cards" },
+  { key: "reports.create", description: "Generate report cards from finalized results" },
+  { key: "reports.approve", description: "Approve generated report cards" },
+  { key: "reports.issue", description: "Issue approved report cards" },
+  { key: "reports.amend", description: "Amend issued report cards" },
+  { key: "report_templates.read", description: "View report-card templates" },
+  { key: "report_templates.create", description: "Create report-card templates and versions" },
+  { key: "report_templates.update", description: "Update report-card templates" },
+  { key: "report_comments.create", description: "Add teacher, class-teacher or head-teacher comments to report cards" },
 ];
 
 const roles = [
@@ -278,6 +288,15 @@ const rolePermissions: Record<string, string[]> = {
     "results.amend",
     "rankings.read",
      "analytics.read",
+    "reports.read",
+    "reports.create",
+    "reports.approve",
+    "reports.issue",
+    "reports.amend",
+    "report_templates.read",
+    "report_templates.create",
+    "report_templates.update",
+    "report_comments.create",
   ],
 
   TEACHER: [
@@ -314,6 +333,10 @@ const rolePermissions: Record<string, string[]> = {
     "results.update",
     "rankings.read",
     "analytics.read",
+    "reports.read",
+    "reports.create",
+    "report_templates.read",
+    "report_comments.create",
   ],
 
   STUDENT: [
@@ -338,6 +361,8 @@ const rolePermissions: Record<string, string[]> = {
     "results.read",
     "rankings.read",
     "analytics.read",
+    "reports.read",
+    "report_templates.read",
   ],
 
   PARENT: [
@@ -362,6 +387,8 @@ const rolePermissions: Record<string, string[]> = {
     "results.read",
     "rankings.read",
     "analytics.read",
+    "reports.read",
+    "report_templates.read",
   ],
 
   STAFF: [
@@ -388,6 +415,8 @@ const rolePermissions: Record<string, string[]> = {
     "results.read",
     "rankings.read",
     "analytics.read",
+    "reports.read",
+    "report_templates.read",
   ],
 };
 

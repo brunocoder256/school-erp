@@ -111,6 +111,8 @@ model School {
   assessments       Assessment[]
   learnerResults    LearnerResult[]
   examinations      Examination[]
+  reportTemplates   ReportTemplate[]
+  reportCards       ReportCard[]
 }
 
 model AcademicYear {
@@ -139,6 +141,7 @@ model AcademicYear {
   assessments    Assessment[]
   learnerResults LearnerResult[]
   examinations  Examination[]
+  reportCards   ReportCard[]
 
   @@unique([schoolId, name])
 }
@@ -158,6 +161,7 @@ model Term {
   assessments    Assessment[]
   learnerResults LearnerResult[]
   examinations  Examination[]
+  reportCards   ReportCard[]
 
   @@unique([academicYearId, name])
 }
@@ -270,6 +274,7 @@ model Student {
 
   enrollments      Enrollment[]
   studentGuardians StudentGuardian[]
+  reportCards      ReportCard[]
 
   @@unique([schoolId, admissionNumber])
   @@index([schoolId])
@@ -300,6 +305,7 @@ model AcademicClass {
   teachingGroups     TeachingGroup[]
 
   assessments Assessment[]
+  reportCards  ReportCard[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -327,6 +333,7 @@ model Stream {
   teachingGroups     TeachingGroup[]
 
   assessments Assessment[]
+  reportCards  ReportCard[]
 
   @@unique([classId, code])
   @@index([classId])
@@ -367,6 +374,7 @@ model Enrollment {
 
   assessmentScores AssessmentScore[]
   learnerResults   LearnerResult[]
+  reportCards      ReportCard[]
 
   @@unique([studentId, academicYearId])
   @@index([studentId])
@@ -424,7 +432,8 @@ model EducationSection {
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  levels AcademicLevel[]
+  levels       AcademicLevel[]
+  reportCards  ReportCard[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -475,6 +484,7 @@ model AcademicLevel {
   toProgressions   AcademicLevelProgression[] @relation("LevelProgressionTo")
   subjectOfferings SubjectOffering[]
   subjectCombinations SubjectCombination[]
+  reportCards   ReportCard[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -1013,6 +1023,26 @@ enum ExaminationPaperStatus {
   COMPLETED
 }
 
+enum ReportStatus {
+  DRAFT
+  GENERATED
+  APPROVED
+  ISSUED
+  AMENDED
+}
+
+enum ReportTemplateVersionStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum ReportCommentAuthorType {
+  SUBJECT_TEACHER
+  CLASS_TEACHER
+  HEAD_TEACHER
+}
+
 /**
  * Configurable assessment scheme (e.g. Lower Secondary CBC, Term Assessment).
  * Schemes are school-scoped configuration; they are never hard-coded in
@@ -1402,4 +1432,197 @@ model ExaminationPaper {
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
 
   @@index([examinationId])
+}
+
+/**
+ * Configurable report-card template (e.g. Lower Secondary Term Report). Templates
+ * are school-scoped configuration; immutable versions carry the section layout
+ * so issued report cards keep the structure that produced them.
+ */
+model ReportTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  code        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  versions ReportTemplateVersion[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model ReportTemplateVersion {
+  id            String                      @id @default(uuid())
+  versionNumber Int
+  name          String?
+  status        ReportTemplateVersionStatus @default(DRAFT)
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+
+  templateId String
+  template   ReportTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  sections     ReportTemplateSection[]
+  reportCards  ReportCard[]
+
+  @@unique([templateId, versionNumber])
+  @@index([templateId])
+}
+
+/**
+ * A configurable section of a report template (e.g. Academic Performance,
+ * Teacher Comment, Head Teacher Comment). Sections are immutable once attached
+ * to a version so historically issued reports keep their section layout.
+ */
+model ReportTemplateSection {
+  id           String   @id @default(uuid())
+  name         String
+  code         String
+  displayOrder Int      @default(0)
+  isRequired   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  templateVersionId String
+  templateVersion   ReportTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([templateVersionId, code])
+  @@index([templateVersionId])
+}
+
+/**
+ * The official academic report for a learner in a specific academic context.
+ * Built from finalized M12 LearnerResults and frozen into a snapshot so later
+ * changes to grading configuration, enrollment or templates do not silently
+ * rewrite the historical report. Lifecycle: DRAFT -> GENERATED -> APPROVED ->
+ * ISSUED, with AMENDED as the controlled correction of an issued report.
+ */
+model ReportCard {
+  id              String       @id @default(uuid())
+  version         Int          @default(1)
+  status          ReportStatus @default(DRAFT)
+  generatedAt     DateTime?
+  approvedAt      DateTime?
+  issuedAt        DateTime?
+  amendedAt       DateTime?
+  amendmentReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  termId String?
+  term   Term? @relation(fields: [termId], references: [id], onDelete: Restrict)
+
+  academicClassId String?
+  academicClass   AcademicClass? @relation(fields: [academicClassId], references: [id], onDelete: Restrict)
+
+  streamId String?
+  stream   Stream? @relation(fields: [streamId], references: [id], onDelete: Restrict)
+
+  academicLevelId String?
+  academicLevel   AcademicLevel? @relation(fields: [academicLevelId], references: [id], onDelete: Restrict)
+
+  educationSectionId String?
+  educationSection   EducationSection? @relation(fields: [educationSectionId], references: [id], onDelete: Restrict)
+
+  enrollmentId String?
+  enrollment   Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+
+  templateVersionId String?
+  templateVersion   ReportTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: SetNull)
+
+  generatedById String? @db.Uuid
+  approvedById  String? @db.Uuid
+  issuedById    String? @db.Uuid
+  amendedById   String? @db.Uuid
+
+  subjectEntries ReportCardSubjectEntry[]
+  comments       ReportCardComment[]
+  amendments     ReportCardAmendment[]
+
+  @@unique([schoolId, studentId, academicYearId, termId])
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([academicYearId])
+  @@index([termId])
+  @@index([status])
+  @@index([enrollmentId])
+  @@index([templateVersionId])
+}
+
+/**
+ * A frozen snapshot of a finalized M12 LearnerResult captured at report
+ * generation time. Stores the subject identity and the result values exactly
+ * as M12 produced them; missing data is never coerced to zero.
+ */
+model ReportCardSubjectEntry {
+  id               String   @id @default(uuid())
+  subjectId        String
+  subjectName      String
+  subjectCode      String
+  finalScore       Decimal? @db.Decimal(6, 2)
+  grade            String?
+  descriptor       String?
+  achievementLevel String?
+  resultStatus     String
+  learnerResultId  String?
+  createdAt        DateTime @default(now())
+
+  reportCardId String
+  reportCard   ReportCard @relation(fields: [reportCardId], references: [id], onDelete: Cascade)
+
+  @@index([reportCardId])
+  @@index([subjectId])
+}
+
+/**
+ * A teacher, class-teacher or head-teacher comment attached to a report card.
+ * Comments belong to the correct report and remain historically preserved
+ * after issue.
+ */
+model ReportCardComment {
+  id           String                  @id @default(uuid())
+  authorType   ReportCommentAuthorType
+  subjectId    String?
+  comment      String
+  authoredById String?                 @db.Uuid
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  reportCardId String
+  reportCard   ReportCard @relation(fields: [reportCardId], references: [id], onDelete: Cascade)
+
+  @@index([reportCardId])
+  @@index([subjectId])
+}
+
+/**
+ * A controlled correction of an issued report card. History is preserved: the
+ * previous and new statuses, the actor, the reason and the timestamp are kept.
+ */
+model ReportCardAmendment {
+  id           String   @id @default(uuid())
+  previousStatus String?
+  newStatus      String?
+  reason        String
+  amendedById   String?  @db.Uuid
+  amendedAt     DateTime @default(now())
+
+  reportCardId String
+  reportCard   ReportCard @relation(fields: [reportCardId], references: [id], onDelete: Cascade)
+
+  @@index([reportCardId])
 }
