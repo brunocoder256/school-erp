@@ -92,10 +92,11 @@ export function usePersona(): UsePersonaResult {
   const isLoading = status === "loading";
 
   const capabilities = useMemo(() => {
-    if (!user?.permissionKeys) {
+    const permissionKeys = user?.permissionKeys;
+    if (!permissionKeys) {
       return resolveCapabilities(new Set());
     }
-    return resolveCapabilities(new Set(user.permissionKeys));
+    return resolveCapabilities(new Set(permissionKeys));
   }, [user?.permissionKeys]);
 
   const profile = useMemo(() => {

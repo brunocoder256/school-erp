@@ -11,6 +11,7 @@ export type ApiRequestOptions<TBody = undefined> = Omit<RequestInit, "body"> & {
 
 export class ApiError extends Error {
   status?: number;
+  validationErrors?: Record<string, string[]> | null;
 
   constructor(message: string, status?: number) {
     super(message);
@@ -107,12 +108,14 @@ export async function apiRequest<T, TBody = undefined>(
 
     const payload = isJsonResponse ? await response.json() : null;
 
-    if (!response.ok) {
+     if (!response.ok) {
       const errorPayload = payload as ApiErrorResponse | null;
-      throw new ApiError(
+      const apiError = new ApiError(
         normalizeErrorMessage(response.status, errorPayload),
         response.status,
       );
+      apiError.validationErrors = errorPayload?.errors ?? null;
+      throw apiError;
     }
 
     return (payload as ApiResponse<T> | T) as T;
